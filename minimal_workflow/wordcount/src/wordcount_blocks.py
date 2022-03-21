@@ -82,5 +82,5 @@ if __name__ == "__main__":
     print("Elapsed Time: " + str(elapsed))
 
     ff = open(resultFile, 'w')
-    ff.write(str(result), ff)
+    ff.write(str(result))
     ff.close()
