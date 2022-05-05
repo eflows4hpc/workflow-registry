@@ -1,0 +1,417 @@
+tosca_definitions_version: alien_dsl_3_0_0
+
+metadata:
+  template_name: eflows4hpc.topologies.MinimalWorkflow
+  template_version: 1.0.0-SNAPSHOT
+  template_author: loicalbertin
+
+description: ""
+
+imports:
+  - yorc-types:1.1.0
+  - tosca-normative-types:1.0.0-ALIEN20
+  - alien-base-types:3.0.0
+  - dls.ansible:1.0.0-SNAPSHOT
+  - pycomps.ansible:1.0.0-SNAPSHOT
+  - imagecreation.ansible:1.0.0-SNAPSHOT
+
+topology_template:
+  inputs:
+    dls_api_username:
+      type: string
+      required: true
+    dls_api_password:
+      type: string
+      required: true
+    dls_api_url:
+      type: string
+      required: true
+    debug:
+      type: boolean
+      required: true
+      default: false
+      description: "Do not redact sensible information on logs"
+    target_host:
+      type: string
+      required: true
+      description: "the remote host"
+  node_templates:
+    PyCOMPSJob:
+      metadata:
+        a4c_edit_x: 243
+        a4c_edit_y: "-236"
+      type: pycomps.ansible.nodes.PyCOMPSJob
+      properties:
+        pycomps_endpoint: { get_input: target_host }
+        compss_module_version: 2.10
+        num_nodes: 2
+        input_data_path: "/tmp"
+        output_data_path: "/tmp"
+        command: "~/wordcount_blocks/src/wordcount_blocks.py"
+        arguments:
+          - "${INPUT_DATA_PATH}/data.txt"
+          - "${OUTPUT_DATA_PATH}/result.txt"
+          - 3000
+        container_image: "/home/bsc44/bsc44070/images/wordcount_rome.sif"
+        container_compss_path: "/opt/view/compss"
+        container_opts: "-e"
+        python_interpreter: python3
+        extra_compss_opts: ""
+      requirements:
+        - dependsOnDlsdagStageInDataFeature:
+            type_requirement: dependency
+            node: StageInData
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+    StageInData:
+      metadata:
+        a4c_edit_x: 249
+        a4c_edit_y: "-346"
+      type: dls.ansible.nodes.DLSDAGStageInData
+      properties:
+        oid: dba52935c7e444d198b377876b4fe0a8
+        target_host: { get_input: target_host }
+        target_path: "/home/bsc44/bsc44070/dls_transfert/data/"
+        dls_api_url: { get_input: dls_api_url }
+        dls_api_username: { get_input: dls_api_username }
+        dls_api_password: { get_input: dls_api_username }
+        dag_id: "taskflow_example"
+        debug: { get_input: debug }
+        user_id: ""
+        vault_id: ""
+    StageOutData:
+      metadata:
+        a4c_edit_x: 245
+        a4c_edit_y: "-120"
+      type: dls.ansible.nodes.DLSDAGStageOutData
+      properties:
+        mid: "71e863ac-aee6-4680-a57c-de318530b71e"
+        target_host: { get_input: target_host }
+        source_path: "/home/bsc44/bsc44070/dls_transfert/data/"
+        register: false
+        dls_api_url: { get_input: dls_api_url }
+        dls_api_username: { get_input: dls_api_username }
+        dls_api_password: { get_input: dls_api_password }
+        dag_id: "upload_example"
+        debug: { get_input: debug }
+        user_id: ""
+        vault_id: ""
+      requirements:
+        - dependsOnPyCompsJobFeature:
+            type_requirement: dependency
+            node: PyCOMPSJob
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+    ImageCreation:
+      metadata:
+        a4c_edit_x: 629
+        a4c_edit_y: "-481"
+      type: imagecreation.ansible.nodes.ImageCreation
+      properties:
+        service_url: "https://bscgrid20.bsc.es/image_creation"
+        insecure_tls: true
+        username: test
+        password: T3st22
+        machine:
+          container_engine: singularity
+          platform: "linux/amd64"
+          architecture: rome
+        workflow: "minimal_workflow"
+        step_id: wordcount
+        force: false
+        debug: { get_input: debug }
+    DLSDAGImageTransfer:
+      metadata:
+        a4c_edit_x: 644
+        a4c_edit_y: "-357"
+      type: dls.ansible.nodes.DLSDAGImageTransfer
+      properties:
+        image_id: "not_used"
+        target_host: { get_input: target_host }
+        target_path: "/home/bsc44/bsc44070/images"
+        dls_api_url: { get_input: dls_api_url }
+        dls_api_username: { get_input: dls_api_username }
+        dls_api_password: { get_input: dls_api_password }
+        dag_id: "transfer_image"
+        debug: { get_input: debug }
+        user_id: bsc44070
+        vault_id: "c7f175cb-430e-4a8d-ab36-6e9dd86550e2"
+      requirements:
+        - dependsOnImageCreationFeature:
+            type_requirement: dependency
+            node: ImageCreation
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+  workflows:
+    exec_job:
+      inputs:
+        user_id:
+          type: string
+          required: true
+        vault_id:
+          type: string
+          required: true
+        oid:
+          type: string
+          required: true
+        target_path:
+          type: string
+          required: true
+        source_path:
+          type: string
+          required: true
+        num_nodes:
+          type: integer
+          required: false
+          default: 1
+      steps:
+        DLSDAGStageInData_run:
+          target: StageInData
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - DLSDAGStageInData_executed
+        DLSDAGStageOutData_run:
+          target: StageOutData
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - DLSDAGStageOutData_executed
+        DLSDAGStageOutData_submit:
+          target: StageOutData
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - DLSDAGStageOutData_submitted
+        DLSDAGStageInData_submitted:
+          target: StageInData
+          activities:
+            - set_state: submitted
+          on_success:
+            - DLSDAGStageInData_executing
+        PyCOMPSJob_submitting:
+          target: PyCOMPSJob
+          activities:
+            - set_state: submitting
+          on_success:
+            - PyCOMPSJob_submit
+        PyCOMPSJob_submit:
+          target: PyCOMPSJob
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - PyCOMPSJob_submitted
+        PyCOMPSJob_executing:
+          target: PyCOMPSJob
+          activities:
+            - set_state: executing
+          on_success:
+            - PyCOMPSJob_run
+        DLSDAGStageInData_executing:
+          target: StageInData
+          activities:
+            - set_state: executing
+          on_success:
+            - DLSDAGStageInData_run
+        PyCOMPSJob_executed:
+          target: PyCOMPSJob
+          activities:
+            - set_state: executed
+          on_success:
+            - DLSDAGStageOutData_submitting
+        DLSDAGStageInData_executed:
+          target: StageInData
+          activities:
+            - set_state: executed
+          on_success:
+            - PyCOMPSJob_submitting
+        PyCOMPSJob_submitted:
+          target: PyCOMPSJob
+          activities:
+            - set_state: submitted
+          on_success:
+            - PyCOMPSJob_executing
+        DLSDAGStageOutData_submitted:
+          target: StageOutData
+          activities:
+            - set_state: submitted
+          on_success:
+            - DLSDAGStageOutData_executing
+        DLSDAGStageInData_submitting:
+          target: StageInData
+          activities:
+            - set_state: submitting
+          on_success:
+            - DLSDAGStageInData_submit
+        DLSDAGStageInData_submit:
+          target: StageInData
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - DLSDAGStageInData_submitted
+        DLSDAGStageOutData_submitting:
+          target: StageOutData
+          activities:
+            - set_state: submitting
+          on_success:
+            - DLSDAGStageOutData_submit
+        PyCOMPSJob_run:
+          target: PyCOMPSJob
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - PyCOMPSJob_executed
+        DLSDAGStageOutData_executed:
+          target: StageOutData
+          activities:
+            - set_state: executed
+        DLSDAGStageOutData_executing:
+          target: StageOutData
+          activities:
+            - set_state: executing
+          on_success:
+            - DLSDAGStageOutData_run
+    image_create:
+      steps:
+        ImageCreation_executing:
+          target: ImageCreation
+          activities:
+            - set_state: executing
+          on_success:
+            - ImageCreation_run
+        ImageCreation_run:
+          target: ImageCreation
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - ImageCreation_executed
+        ImageCreation_submit:
+          target: ImageCreation
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - ImageCreation_submitted
+        ImageCreation_submitted:
+          target: ImageCreation
+          activities:
+            - set_state: submitted
+          on_success:
+            - ImageCreation_executing
+        ImageCreation_executed:
+          target: ImageCreation
+          activities:
+            - set_state: executed
+        ImageCreation_submitting:
+          target: ImageCreation
+          activities:
+            - set_state: submitting
+          on_success:
+            - ImageCreation_submit
+    install:
+      steps:
+        DLSDAGImageTransfer_submitting:
+          target: DLSDAGImageTransfer
+          activities:
+            - set_state: submitting
+          on_success:
+            - DLSDAGImageTransfer_submit
+        ImageCreation_submitted:
+          target: ImageCreation
+          activities:
+            - set_state: submitted
+          on_success:
+            - ImageCreation_executing
+        DLSDAGImageTransfer_run:
+          target: DLSDAGImageTransfer
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - DLSDAGImageTransfer_executed
+        ImageCreation_executed:
+          target: ImageCreation
+          activities:
+            - set_state: executed
+          on_success:
+            - DLSDAGImageTransfer_submitting
+        ImageCreation_executing:
+          target: ImageCreation
+          activities:
+            - set_state: executing
+          on_success:
+            - ImageCreation_run
+        ImageCreation_submitting:
+          target: ImageCreation
+          activities:
+            - set_state: submitting
+          on_success:
+            - ImageCreation_submit
+        StageInData_initial:
+          target: StageInData
+          activities:
+            - set_state: initial
+          on_success:
+            - PyCOMPSJob_initial
+        ImageCreation_initial:
+          target: ImageCreation
+          activities:
+            - set_state: initial
+          on_success:
+            - ImageCreation_submitting
+        ImageCreation_run:
+          target: ImageCreation
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - ImageCreation_executed
+        DLSDAGImageTransfer_executing:
+          target: DLSDAGImageTransfer
+          activities:
+            - set_state: executing
+          on_success:
+            - DLSDAGImageTransfer_run
+        ImageCreation_submit:
+          target: ImageCreation
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - ImageCreation_submitted
+        StageOutData_initial:
+          target: StageOutData
+          activities:
+            - set_state: initial
+          on_success:
+            - ImageCreation_submitting
+        DLSDAGImageTransfer_submit:
+          target: DLSDAGImageTransfer
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - DLSDAGImageTransfer_submitted
+        DLSDAGImageTransfer_submitted:
+          target: DLSDAGImageTransfer
+          activities:
+            - set_state: submitted
+          on_success:
+            - DLSDAGImageTransfer_executing
+        PyCOMPSJob_initial:
+          target: PyCOMPSJob
+          activities:
+            - set_state: initial
+          on_success:
+            - StageOutData_initial
+        DLSDAGImageTransfer_initial:
+          target: DLSDAGImageTransfer
+          activities:
+            - set_state: initial
+          on_success:
+            - DLSDAGImageTransfer_submitting
+        DLSDAGImageTransfer_executed:
+          target: DLSDAGImageTransfer
+          activities:
+            - set_state: executed
