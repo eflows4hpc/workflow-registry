@@ -11,9 +11,9 @@ imports:
   - yorc-types:1.1.0
   - tosca-normative-types:1.0.0-ALIEN20
   - alien-base-types:3.0.0
-  - dls.ansible:1.0.0-SNAPSHOT
-  - pycomps.ansible:1.0.0-SNAPSHOT
-  - imagecreation.ansible:1.0.0-SNAPSHOT
+  - pycomps.ansible:1.1.0-SNAPSHOT
+  - dls.ansible:1.1.0-SNAPSHOT
+  - imagecreation.ansible:1.0.0
 
 topology_template:
   inputs:
@@ -35,6 +35,29 @@ topology_template:
       type: string
       required: true
       description: "the remote host"
+    user_id:
+      type: string
+      required: false
+      default: ""
+      description: "User id to use for authentication may be replaced with workflow input"
+    vault_id:
+      type: string
+      required: false
+      default: ""
+      description: "User id to use for authentication may be replaced with workflow input"
+    container_image_transfer_directory:
+      type: string
+      required: false
+      description: "path of the file on the remote host"
+    mid:
+      type: string
+      required: true
+      description: "Uploaded Metadata ID"
+    register_result_in_datacat:
+      type: boolean
+      required: false
+      default: false
+      description: "Should the record created in b2share be registered with data cat"
   node_templates:
     PyCOMPSJob:
       metadata:
@@ -45,6 +68,7 @@ topology_template:
         pycomps_endpoint: { get_input: target_host }
         compss_module_version: 2.10
         num_nodes: 2
+        qos: debug
         input_data_path: "/tmp"
         output_data_path: "/tmp"
         command: "~/wordcount_blocks/src/wordcount_blocks.py"
@@ -52,7 +76,7 @@ topology_template:
           - "${INPUT_DATA_PATH}/data.txt"
           - "${OUTPUT_DATA_PATH}/result.txt"
           - 3000
-        container_image: "/home/bsc44/bsc44070/images/wordcount_rome.sif"
+        container_image: ""
         container_compss_path: "/opt/view/compss"
         container_opts: "-e"
         python_interpreter: python3
@@ -63,15 +87,18 @@ topology_template:
             node: StageInData
             capability: tosca.capabilities.Node
             relationship: tosca.relationships.DependsOn
+        - dependsOnDlsdagImageTransferFeature:
+            type_requirement: img_transfer
+            node: DLSDAGImageTransfer
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
     StageInData:
       metadata:
-        a4c_edit_x: 249
-        a4c_edit_y: "-346"
+        a4c_edit_x: 247
+        a4c_edit_y: "-345"
       type: dls.ansible.nodes.DLSDAGStageInData
       properties:
-        oid: dba52935c7e444d198b377876b4fe0a8
         target_host: { get_input: target_host }
-        target_path: "/home/bsc44/bsc44070/dls_transfert/data/"
         dls_api_url: { get_input: dls_api_url }
         dls_api_username: { get_input: dls_api_username }
         dls_api_password: { get_input: dls_api_username }
@@ -82,13 +109,12 @@ topology_template:
     StageOutData:
       metadata:
         a4c_edit_x: 245
-        a4c_edit_y: "-120"
+        a4c_edit_y: "-118"
       type: dls.ansible.nodes.DLSDAGStageOutData
       properties:
-        mid: "71e863ac-aee6-4680-a57c-de318530b71e"
+        mid: { get_input: mid }
         target_host: { get_input: target_host }
-        source_path: "/home/bsc44/bsc44070/dls_transfert/data/"
-        register: false
+        register: { get_input: register_result_in_datacat }
         dls_api_url: { get_input: dls_api_url }
         dls_api_username: { get_input: dls_api_username }
         dls_api_password: { get_input: dls_api_password }
@@ -105,7 +131,7 @@ topology_template:
     ImageCreation:
       metadata:
         a4c_edit_x: 629
-        a4c_edit_y: "-481"
+        a4c_edit_y: "-480"
       type: imagecreation.ansible.nodes.ImageCreation
       properties:
         service_url: "https://bscgrid20.bsc.es/image_creation"
@@ -128,14 +154,14 @@ topology_template:
       properties:
         image_id: "not_used"
         target_host: { get_input: target_host }
-        target_path: "/home/bsc44/bsc44070/images"
+        target_path: { get_input: container_image_transfer_directory }
         dls_api_url: { get_input: dls_api_url }
         dls_api_username: { get_input: dls_api_username }
         dls_api_password: { get_input: dls_api_password }
         dag_id: "transfer_image"
         debug: { get_input: debug }
-        user_id: bsc44070
-        vault_id: "c7f175cb-430e-4a8d-ab36-6e9dd86550e2"
+        user_id: { get_input: user_id }
+        vault_id: { get_input: vault_id }
       requirements:
         - dependsOnImageCreationFeature:
             type_requirement: dependency
