@@ -17,12 +17,6 @@ imports:
 
 topology_template:
   inputs:
-    dls_api_username:
-      type: string
-      required: true
-    dls_api_password:
-      type: string
-      required: true
     dls_api_url:
       type: string
       required: true
@@ -100,8 +94,8 @@ topology_template:
       properties:
         target_host: { get_input: target_host }
         dls_api_url: { get_input: dls_api_url }
-        dls_api_username: { get_input: dls_api_username }
-        dls_api_password: { get_input: dls_api_username }
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
         dag_id: "taskflow_example"
         debug: { get_input: debug }
         user_id: ""
@@ -116,8 +110,8 @@ topology_template:
         target_host: { get_input: target_host }
         register: { get_input: register_result_in_datacat }
         dls_api_url: { get_input: dls_api_url }
-        dls_api_username: { get_input: dls_api_username }
-        dls_api_password: { get_input: dls_api_password }
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
         dag_id: "upload_example"
         debug: { get_input: debug }
         user_id: ""
@@ -136,8 +130,8 @@ topology_template:
       properties:
         service_url: "https://bscgrid20.bsc.es/image_creation"
         insecure_tls: true
-        username: test
-        password: T3st22
+        username: { get_secret: [/secret/data/services_secrets/image_creation, data=user] }
+        password: { get_secret: [/secret/data/services_secrets/image_creation, data=password] }
         machine:
           container_engine: singularity
           platform: "linux/amd64"
@@ -156,8 +150,8 @@ topology_template:
         target_host: { get_input: target_host }
         target_path: { get_input: container_image_transfer_directory }
         dls_api_url: { get_input: dls_api_url }
-        dls_api_username: { get_input: dls_api_username }
-        dls_api_password: { get_input: dls_api_password }
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
         dag_id: "transfer_image"
         debug: { get_input: debug }
         user_id: { get_input: user_id }
