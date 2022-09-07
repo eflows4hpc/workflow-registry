@@ -65,7 +65,7 @@ topology_template:
         qos: debug
         input_data_path: "/tmp"
         output_data_path: "/tmp"
-        command: "~/wordcount_blocks/src/wordcount_blocks.py"
+        command: "/wordcount/src/wordcount_blocks.py"
         arguments:
           - "${INPUT_DATA_PATH}/data.txt"
           - "${OUTPUT_DATA_PATH}/result.txt"
