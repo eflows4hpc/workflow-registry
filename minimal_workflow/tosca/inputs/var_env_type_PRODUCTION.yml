@@ -1,2 +1,2 @@
 DLS_API_URL: "https://eflows4hpc.bsc.es/datalogistics/api/v1"
-TARGET_HOST: "amdlogin.bsc.es"
+TARGET_HOST: "nord3.bsc.es"
