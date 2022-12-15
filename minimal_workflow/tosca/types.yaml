@@ -2,7 +2,7 @@ tosca_definitions_version: alien_dsl_3_0_0
 
 metadata:
   template_name: eflows4hpc.topologies.MinimalWorkflow
-  template_version: 1.0.0-SNAPSHOT
+  template_version: 1.1.0-SNAPSHOT
   template_author: loicalbertin
 
 description: ""
@@ -10,122 +10,77 @@ description: ""
 imports:
   - yorc-types:1.1.0
   - tosca-normative-types:1.0.0-ALIEN20
+  - dls.ansible:1.2.0-SNAPSHOT
   - alien-base-types:3.0.0
-  - pycomps.ansible:1.1.0-SNAPSHOT
-  - dls.ansible:1.1.0-SNAPSHOT
-  - imagecreation.ansible:1.0.0
+  - eflows4hpc.env:1.0.0-SNAPSHOT
+  - imagecreation.ansible:1.2.0-SNAPSHOT
+  - org.eflows4hpc.pycompss.plugin:1.0.0-SNAPSHOT
 
 topology_template:
   inputs:
-    dls_api_url:
+    container_image_transfer_directory:
       type: string
-      required: true
+      required: false
+      description: "path of the file on the remote host"
     debug:
       type: boolean
       required: true
       default: false
       description: "Do not redact sensible information on logs"
-    target_host:
-      type: string
-      required: true
-      description: "the remote host"
-    user_id:
-      type: string
-      required: false
-      default: ""
-      description: "User id to use for authentication may be replaced with workflow input"
-    vault_id:
-      type: string
-      required: false
-      default: ""
-      description: "User id to use for authentication may be replaced with workflow input"
-    container_image_transfer_directory:
-      type: string
-      required: false
-      description: "path of the file on the remote host"
-    mid:
-      type: string
-      required: true
-      description: "Uploaded Metadata ID"
     register_result_in_datacat:
       type: boolean
       required: false
       default: false
       description: "Should the record created in b2share be registered with data cat"
+    user_id:
+      type: string
+      required: false
+      default: ""
+      description: "User id to use for authentication may be replaced with workflow input"
+    mid:
+      type: string
+      required: false
+      description: "Uploaded Metadata ID"
+    vault_id:
+      type: string
+      required: false
+      default: ""
+      description: "User id to use for authentication may be replaced with workflow input"
   node_templates:
-    PyCOMPSJob:
+    AbstractEnvironment:
       metadata:
-        a4c_edit_x: 243
-        a4c_edit_y: "-236"
-      type: pycomps.ansible.nodes.PyCOMPSJob
-      properties:
-        pycomps_endpoint: { get_input: target_host }
-        compss_module_version: 2.10
-        num_nodes: 2
-        qos: debug
-        input_data_path: "/tmp"
-        output_data_path: "/tmp"
-        command: "/wordcount/src/wordcount_blocks.py"
-        arguments:
-          - "${INPUT_DATA_PATH}/data.txt"
-          - "${OUTPUT_DATA_PATH}/result.txt"
-          - 3000
-        container_image: ""
-        container_compss_path: "/opt/view/compss"
-        container_opts: "-e"
-        python_interpreter: python3
-        extra_compss_opts: ""
-      requirements:
-        - dependsOnDlsdagStageInDataFeature:
-            type_requirement: dependency
-            node: StageInData
-            capability: tosca.capabilities.Node
-            relationship: tosca.relationships.DependsOn
-        - dependsOnDlsdagImageTransferFeature:
-            type_requirement: img_transfer
-            node: DLSDAGImageTransfer
-            capability: tosca.capabilities.Node
-            relationship: tosca.relationships.DependsOn
-    StageInData:
+        a4c_edit_x: 268
+        a4c_edit_y: 287
+      type: eflows4hpc.env.nodes.AbstractEnvironment
+    DLSDAGImageTransfer:
       metadata:
-        a4c_edit_x: 247
-        a4c_edit_y: "-345"
-      type: dls.ansible.nodes.DLSDAGStageInData
+        a4c_edit_x: "-247"
+        a4c_edit_y: 36
+      type: dls.ansible.nodes.DLSDAGImageTransfer
       properties:
-        target_host: { get_input: target_host }
-        dls_api_url: { get_input: dls_api_url }
+        target_path: { get_input: container_image_transfer_directory }
+        run_in_standard_mode: true
         dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
         dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
-        dag_id: "taskflow_example"
+        dag_id: "transfer_image"
         debug: { get_input: debug }
-        user_id: ""
-        vault_id: ""
-    StageOutData:
-      metadata:
-        a4c_edit_x: 245
-        a4c_edit_y: "-118"
-      type: dls.ansible.nodes.DLSDAGStageOutData
-      properties:
-        mid: { get_input: mid }
-        target_host: { get_input: target_host }
-        register: { get_input: register_result_in_datacat }
-        dls_api_url: { get_input: dls_api_url }
-        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
-        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
-        dag_id: "upload_example"
-        debug: { get_input: debug }
-        user_id: ""
-        vault_id: ""
+        user_id: { get_input: user_id }
+        vault_id: { get_input: vault_id }
       requirements:
-        - dependsOnPyCompsJobFeature:
+        - dependsOnImageCreationFeature:
             type_requirement: dependency
-            node: PyCOMPSJob
+            node: ImageCreation
             capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+        - dependsOnAbstractEnvironmentExec_env:
+            type_requirement: environment
+            node: AbstractEnvironment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
             relationship: tosca.relationships.DependsOn
     ImageCreation:
       metadata:
-        a4c_edit_x: 629
-        a4c_edit_y: "-480"
+        a4c_edit_x: 274
+        a4c_edit_y: "-3"
       type: imagecreation.ansible.nodes.ImageCreation
       properties:
         service_url: "https://bscgrid20.bsc.es/image_creation"
@@ -140,26 +95,94 @@ topology_template:
         step_id: wordcount
         force: false
         debug: { get_input: debug }
-    DLSDAGImageTransfer:
+        run_in_standard_mode: true
+    StageInData:
       metadata:
-        a4c_edit_x: 644
-        a4c_edit_y: "-357"
-      type: dls.ansible.nodes.DLSDAGImageTransfer
+        a4c_edit_x: "-77"
+        a4c_edit_y: 267
+      type: dls.ansible.nodes.DLSDAGStageInData
       properties:
-        image_id: "not_used"
-        target_host: { get_input: target_host }
-        target_path: { get_input: container_image_transfer_directory }
-        dls_api_url: { get_input: dls_api_url }
+        input_name_for_oid: oid
+        input_name_for_target_path: "staged_in_data_path"
         dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
         dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
-        dag_id: "transfer_image"
+        dag_id: "taskflow_example"
         debug: { get_input: debug }
-        user_id: { get_input: user_id }
-        vault_id: { get_input: vault_id }
+        user_id: ""
+        vault_id: ""
+        run_in_standard_mode: false
       requirements:
-        - dependsOnImageCreationFeature:
+        - dependsOnAbstractEnvironmentExec_env:
+            type_requirement: environment
+            node: AbstractEnvironment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+    PyCOMPSJob:
+      metadata:
+        a4c_edit_x: "-491"
+        a4c_edit_y: 391
+      type: org.eflows4hpc.pycompss.plugin.nodes.PyCOMPSJob
+      properties:
+        submission_params:
+          qos: debug
+          python_interpreter: python3
+          compss_modules:
+            - "compss/3.0"
+            - singularity
+          num_nodes: 1
+          extra_compss_opts: "--pythonpath=/wordcount/src/"
+        application:
+          container_opts:
+            container_opts: "-e"
+            container_compss_path: "/opt/view/compss"
+          arguments:
+            - "${staged_in_data_path}/data.txt"
+            - "${result_data_path}/result.txt"
+            - 3000
+          command: "/wordcount/src/wordcount_blocks.py"
+      requirements:
+        - dependsOnDlsdagImageTransferFeature:
+            type_requirement: img_transfer
+            node: DLSDAGImageTransfer
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+        - dependsOnStageInDataFeature:
             type_requirement: dependency
-            node: ImageCreation
+            node: StageInData
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+        - dependsOnAbstractEnvironmentExec_env:
+            type_requirement: environment
+            node: AbstractEnvironment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+    StageOutData:
+      metadata:
+        a4c_edit_x: "-856"
+        a4c_edit_y: 520
+      type: dls.ansible.nodes.DLSDAGStageOutData
+      properties:
+        mid: { get_input: mid }
+        register: { get_input: register_result_in_datacat }
+        input_name_for_mid: mid
+        input_name_for_source_path: "result_data_path"
+        input_name_for_register: register
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
+        dag_id: "upload_example"
+        debug: { get_input: debug }
+        user_id: ""
+        vault_id: ""
+        run_in_standard_mode: false
+      requirements:
+        - dependsOnAbstractEnvironmentExec_env:
+            type_requirement: environment
+            node: AbstractEnvironment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+        - dependsOnPyCompsJobFeature:
+            type_requirement: dependency
+            node: PyCOMPSJob
             capability: tosca.capabilities.Node
             relationship: tosca.relationships.DependsOn
   workflows:
@@ -174,10 +197,10 @@ topology_template:
         oid:
           type: string
           required: true
-        target_path:
+        staged_in_data_path:
           type: string
           required: true
-        source_path:
+        result_data_path:
           type: string
           required: true
         num_nodes:
@@ -297,141 +320,3 @@ topology_template:
             - set_state: executing
           on_success:
             - DLSDAGStageOutData_run
-    image_create:
-      steps:
-        ImageCreation_executing:
-          target: ImageCreation
-          activities:
-            - set_state: executing
-          on_success:
-            - ImageCreation_run
-        ImageCreation_run:
-          target: ImageCreation
-          activities:
-            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
-          on_success:
-            - ImageCreation_executed
-        ImageCreation_submit:
-          target: ImageCreation
-          activities:
-            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
-          on_success:
-            - ImageCreation_submitted
-        ImageCreation_submitted:
-          target: ImageCreation
-          activities:
-            - set_state: submitted
-          on_success:
-            - ImageCreation_executing
-        ImageCreation_executed:
-          target: ImageCreation
-          activities:
-            - set_state: executed
-        ImageCreation_submitting:
-          target: ImageCreation
-          activities:
-            - set_state: submitting
-          on_success:
-            - ImageCreation_submit
-    install:
-      steps:
-        DLSDAGImageTransfer_submitting:
-          target: DLSDAGImageTransfer
-          activities:
-            - set_state: submitting
-          on_success:
-            - DLSDAGImageTransfer_submit
-        ImageCreation_submitted:
-          target: ImageCreation
-          activities:
-            - set_state: submitted
-          on_success:
-            - ImageCreation_executing
-        DLSDAGImageTransfer_run:
-          target: DLSDAGImageTransfer
-          activities:
-            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
-          on_success:
-            - DLSDAGImageTransfer_executed
-        ImageCreation_executed:
-          target: ImageCreation
-          activities:
-            - set_state: executed
-          on_success:
-            - DLSDAGImageTransfer_submitting
-        ImageCreation_executing:
-          target: ImageCreation
-          activities:
-            - set_state: executing
-          on_success:
-            - ImageCreation_run
-        ImageCreation_submitting:
-          target: ImageCreation
-          activities:
-            - set_state: submitting
-          on_success:
-            - ImageCreation_submit
-        StageInData_initial:
-          target: StageInData
-          activities:
-            - set_state: initial
-          on_success:
-            - PyCOMPSJob_initial
-        ImageCreation_initial:
-          target: ImageCreation
-          activities:
-            - set_state: initial
-          on_success:
-            - ImageCreation_submitting
-        ImageCreation_run:
-          target: ImageCreation
-          activities:
-            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
-          on_success:
-            - ImageCreation_executed
-        DLSDAGImageTransfer_executing:
-          target: DLSDAGImageTransfer
-          activities:
-            - set_state: executing
-          on_success:
-            - DLSDAGImageTransfer_run
-        ImageCreation_submit:
-          target: ImageCreation
-          activities:
-            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
-          on_success:
-            - ImageCreation_submitted
-        StageOutData_initial:
-          target: StageOutData
-          activities:
-            - set_state: initial
-          on_success:
-            - ImageCreation_submitting
-        DLSDAGImageTransfer_submit:
-          target: DLSDAGImageTransfer
-          activities:
-            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
-          on_success:
-            - DLSDAGImageTransfer_submitted
-        DLSDAGImageTransfer_submitted:
-          target: DLSDAGImageTransfer
-          activities:
-            - set_state: submitted
-          on_success:
-            - DLSDAGImageTransfer_executing
-        PyCOMPSJob_initial:
-          target: PyCOMPSJob
-          activities:
-            - set_state: initial
-          on_success:
-            - StageOutData_initial
-        DLSDAGImageTransfer_initial:
-          target: DLSDAGImageTransfer
-          activities:
-            - set_state: initial
-          on_success:
-            - DLSDAGImageTransfer_submitting
-        DLSDAGImageTransfer_executed:
-          target: DLSDAGImageTransfer
-          activities:
-            - set_state: executed
