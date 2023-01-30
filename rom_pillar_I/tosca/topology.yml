@@ -1,0 +1,320 @@
+tosca_definitions_version: alien_dsl_3_0_0
+
+metadata:
+  template_name: "rom_pillar_I"
+  template_version: 1.0.0-SNAPSHOT
+  template_author: loicalbertin
+
+description: ""
+
+imports:
+  - yorc-types:1.1.0
+  - tosca-normative-types:1.0.0-ALIEN20
+  - dls.ansible:1.2.0-SNAPSHOT
+  - alien-base-types:3.0.0
+  - eflows4hpc.env:1.0.0-SNAPSHOT
+  - imagecreation.ansible:1.2.0-SNAPSHOT
+  - org.eflows4hpc.pycompss.plugin:1.0.0-SNAPSHOT
+
+topology_template:
+  inputs:
+    debug:
+      type: boolean
+      required: true
+      default: false
+      description: "Do not redact sensible information on logs"
+    user_id:
+      type: string
+      required: false
+      default: ""
+      description: "User id to use for authentication may be replaced with workflow input"
+    vault_id:
+      type: string
+      required: false
+      default: ""
+      description: "User id to use for authentication may be replaced with workflow input"
+    container_image_transfer_directory:
+      type: string
+      required: false
+      description: "path of the image on the remote host"
+    mid:
+      type: string
+      required: true
+      description: "Uploaded Metadata ID"
+    register_result_in_datacat:
+      type: boolean
+      required: false
+      default: false
+      description: "Should the record created in b2share be registered with data cat"
+  node_templates:
+    StageOutData:
+      metadata:
+        a4c_edit_x: 246
+        a4c_edit_y: "-116"
+      type: dls.ansible.nodes.DLSDAGStageOutData
+      properties:
+        mid: { get_input: mid }
+        register: { get_input: register_result_in_datacat }
+        input_name_for_mid: mid
+        input_name_for_source_path: "result_data_path"
+        input_name_for_register: register
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
+        dag_id: "upload_example"
+        debug: { get_input: debug }
+        user_id: ""
+        vault_id: ""
+        run_in_standard_mode: false
+      requirements:
+        - dependsOnAbstractEnvironmentExec_env:
+            type_requirement: environment
+            node: AbstractEnvironment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+        - dependsOnPyCompsJob2Feature:
+            type_requirement: dependency
+            node: PyCOMPSJob
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+    ImageCreation:
+      metadata:
+        a4c_edit_x: 916
+        a4c_edit_y: "-370"
+      type: imagecreation.ansible.nodes.ImageCreation
+      properties:
+        service_url: "https://bscgrid20.bsc.es/image_creation"
+        insecure_tls: true
+        username: { get_secret: [/secret/data/services_secrets/image_creation, data=user] }
+        password: { get_secret: [/secret/data/services_secrets/image_creation, data=password] }
+        machine:
+          container_engine: singularity
+          platform: "linux/amd64"
+          architecture: sandybridge
+        workflow: "rom_pillar_I"
+        step_id: "reduce_order_model"
+        force: false
+        debug: { get_input: debug }
+        run_in_standard_mode: true
+    DLSDAGImageTransfer:
+      metadata:
+        a4c_edit_x: 475
+        a4c_edit_y: "-365"
+      type: dls.ansible.nodes.DLSDAGImageTransfer
+      properties:
+        image_id: "not_used"
+        target_path: { get_input: container_image_transfer_directory }
+        run_in_standard_mode: true
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
+        dag_id: "transfer_image"
+        debug: { get_input: debug }
+        user_id: { get_input: user_id }
+        vault_id: { get_input: vault_id }
+      requirements:
+        - dependsOnImageCreationFeature:
+            type_requirement: dependency
+            node: ImageCreation
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+        - dependsOnAbstractEnvironmentExec_env:
+            type_requirement: environment
+            node: AbstractEnvironment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+    AbstractEnvironment:
+      metadata:
+        a4c_edit_x: 890
+        a4c_edit_y: "-233"
+      type: eflows4hpc.env.nodes.AbstractEnvironment
+    PyCOMPSJob:
+      metadata:
+        a4c_edit_x: 307
+        a4c_edit_y: "-244"
+      type: org.eflows4hpc.pycompss.plugin.nodes.PyCOMPSJob
+      properties:
+        submission_params:
+          qos: debug
+          python_interpreter: python3
+          num_nodes: 2
+          extra_compss_opts: "--cpus_per_task --env_script=/reduce_order_model/env.sh"
+        application:
+          container_opts:
+            container_opts: "-e"
+            container_compss_path: "/opt/view/compss"
+          arguments:
+            - "$(dirname ${staged_in_file_path})"
+            - "/reduce_order_model/ProjectParameters_tmpl.json"
+            - "${result_data_path}/RomParameters.json"
+          command: "/reduce_order_model/src/UpdatedWorkflow.py"
+        keep_environment: true
+      requirements:
+        - dependsOnDlsdagImageTransferFeature:
+            type_requirement: img_transfer
+            node: DLSDAGImageTransfer
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+        - dependsOnAbstractEnvironmentExec_env:
+            type_requirement: environment
+            node: AbstractEnvironment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+        - dependsOnHttp2SshFeature:
+            type_requirement: dependency
+            node: HTTP2SSH
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+    HTTP2SSH:
+      metadata:
+        a4c_edit_x: 201
+        a4c_edit_y: "-449"
+      type: dls.ansible.nodes.HTTP2SSH
+      properties:
+        dag_id: plainhttp2ssh
+        url: "https://b2drop.bsc.es/index.php/s/fQ85ZLDztG2t5j3/download/GidExampleSwaped.mdpa"
+        force: true
+        input_name_for_url: url
+        input_name_for_target_path: "staged_in_file_path"
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
+        debug: { get_input: debug }
+        user_id: ""
+        vault_id: ""
+        run_in_standard_mode: false
+      requirements:
+        - dependsOnAbstractEnvironmentExec_env:
+            type_requirement: environment
+            node: AbstractEnvironment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+  workflows:
+    exec_job:
+      inputs:
+        user_id:
+          type: string
+          required: true
+        vault_id:
+          type: string
+          required: true
+        result_data_path:
+          type: string
+          required: true
+        staged_in_file_path:
+          type: string
+          required: true
+        num_nodes:
+          type: integer
+          required: false
+          default: 1
+      steps:
+        StageOutData_executing:
+          target: StageOutData
+          activities:
+            - set_state: executing
+          on_success:
+            - StageOutData_run
+        HTTP2SSH_submitted:
+          target: HTTP2SSH
+          activities:
+            - set_state: submitted
+          on_success:
+            - HTTP2SSH_executing
+        PyCOMPSJob_submitting:
+          target: PyCOMPSJob
+          activities:
+            - set_state: submitting
+          on_success:
+            - PyCOMPSJob_submit
+        PyCOMPSJob_submit:
+          target: PyCOMPSJob
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - PyCOMPSJob_submitted
+        StageOutData_submitted:
+          target: StageOutData
+          activities:
+            - set_state: submitted
+          on_success:
+            - StageOutData_executing
+        StageOutData_submitting:
+          target: StageOutData
+          activities:
+            - set_state: submitting
+          on_success:
+            - StageOutData_submit
+        StageOutData_run:
+          target: StageOutData
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - StageOutData_executed
+        HTTP2SSH_executing:
+          target: HTTP2SSH
+          activities:
+            - set_state: executing
+          on_success:
+            - HTTP2SSH_run
+        PyCOMPSJob_submitted:
+          target: PyCOMPSJob
+          activities:
+            - set_state: submitted
+          on_success:
+            - PyCOMPSJob_executing
+        HTTP2SSH_submitting:
+          target: HTTP2SSH
+          activities:
+            - set_state: submitting
+          on_success:
+            - HTTP2SSH_submit
+        StageOutData_submit:
+          target: StageOutData
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - StageOutData_submitted
+        HTTP2SSH_run:
+          target: HTTP2SSH
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - HTTP2SSH_executed
+        HTTP2SSH_executed:
+          target: HTTP2SSH
+          activities:
+            - set_state: executed
+          on_success:
+            - PyCOMPSJob_submitting
+        StageOutData_executed:
+          target: StageOutData
+          activities:
+            - set_state: executed
+        PyCOMPSJob_executing:
+          target: PyCOMPSJob
+          activities:
+            - set_state: executing
+          on_success:
+            - PyCOMPSJob_run
+        HTTP2SSH_submit:
+          target: HTTP2SSH
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - HTTP2SSH_submitted
+        PyCOMPSJob_executed:
+          target: PyCOMPSJob
+          activities:
+            - set_state: executed
+          on_success:
+            - StageOutData_submitting
+        PyCOMPSJob_run:
+          target: PyCOMPSJob
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - PyCOMPSJob_executed
