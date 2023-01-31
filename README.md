@@ -1,4 +1,4 @@
-#Workflow Registry
+# Workflow Registry
 
 This is a repository to store the Workflow descriptions using the eFlows4HPC methodology. This description consist of at least the TOSCA description of the worklfow, the code of the their different steps and their required software per step.
 
