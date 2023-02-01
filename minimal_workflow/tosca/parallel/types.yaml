@@ -1,0 +1,568 @@
+tosca_definitions_version: alien_dsl_3_0_0
+
+metadata:
+  template_name: eflows4hpc.topologies.ParallelMinimalWorkflow
+  template_version: 1.0.0-SNAPSHOT
+  template_author: loicalbertin
+
+description: ""
+
+imports:
+  - yorc-types:1.1.0
+  - tosca-normative-types:1.0.0-ALIEN20
+  - dls.ansible:1.2.0-SNAPSHOT
+  - alien-base-types:3.0.0
+  - eflows4hpc.env:1.0.0-SNAPSHOT
+  - imagecreation.ansible:1.2.0-SNAPSHOT
+  - org.eflows4hpc.pycompss.plugin:1.0.0-SNAPSHOT
+
+topology_template:
+  inputs:
+    debug:
+      type: boolean
+      required: true
+      default: false
+      description: "Do not redact sensible information on logs"
+    register_result_in_datacat:
+      type: boolean
+      required: false
+      default: false
+      description: "Should the record created in b2share be registered with data cat"
+    user_id:
+      type: string
+      required: false
+      default: ""
+      description: "User id to use for authentication may be replaced with workflow input"
+    mid:
+      type: string
+      required: false
+      description: "Uploaded Metadata ID"
+    vault_id:
+      type: string
+      required: false
+      default: ""
+      description: "User id to use for authentication may be replaced with workflow input"
+    container_image_transfer_directory_cluster1:
+      type: string
+      required: false
+      description: "path of the file on the remote host"
+    container_image_transfer_directory_cluster2:
+      type: string
+      required: false
+      description: "path of the file on the remote host"
+  node_templates:
+    ImageCreationCluster1:
+      metadata:
+        a4c_edit_x: 556
+        a4c_edit_y: 86
+      type: imagecreation.ansible.nodes.ImageCreation
+      properties:
+        service_url: "https://bscgrid20.bsc.es/image_creation"
+        insecure_tls: true
+        username: { get_secret: [/secret/data/services_secrets/image_creation, data=user] }
+        password: { get_secret: [/secret/data/services_secrets/image_creation, data=password] }
+        machine:
+          container_engine: singularity
+          platform: "linux/amd64"
+          architecture: rome
+        workflow: "minimal_workflow"
+        step_id: wordcount
+        force: false
+        debug: { get_input: debug }
+        run_in_standard_mode: true
+    DLSDAGImageTransferCluster1:
+      metadata:
+        a4c_edit_x: "-49"
+        a4c_edit_y: "-70"
+      type: dls.ansible.nodes.DLSDAGImageTransfer
+      properties:
+        target_host: "nord3.bsc.es"
+        target_path: { get_input: container_image_transfer_directory_cluster1 }
+        run_in_standard_mode: true
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
+        dag_id: "transfer_image"
+        debug: { get_input: debug }
+        user_id: { get_input: user_id }
+        vault_id: { get_input: vault_id }
+      requirements:
+        - dependsOnImageCreationFeature:
+            type_requirement: dependency
+            node: ImageCreationCluster1
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+        - dependsOnCluster1EnvironmentExec_env:
+            type_requirement: environment
+            node: Cluster1Environment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+    StageInDataCluster1:
+      metadata:
+        a4c_edit_x: "-53"
+        a4c_edit_y: 3
+      type: dls.ansible.nodes.DLSDAGStageInData
+      properties:
+        input_name_for_oid: oid
+        input_name_for_target_path: "cluster1_input_path"
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
+        dag_id: "taskflow_example"
+        debug: { get_input: debug }
+        user_id: ""
+        vault_id: ""
+        run_in_standard_mode: false
+      requirements:
+        - dependsOnAbstractEnvironmentExec_env:
+            type_requirement: environment
+            node: Cluster1Environment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+    PyCOMPSJobCluster1:
+      metadata:
+        a4c_edit_x: "-316"
+        a4c_edit_y: 77
+      type: org.eflows4hpc.pycompss.plugin.nodes.PyCOMPSJob
+      properties:
+        submission_params:
+          qos: debug
+          python_interpreter: python3
+          compss_modules:
+            - "compss/3.0"
+            - singularity
+          num_nodes: 1
+          extra_compss_opts: "--pythonpath=/wordcount/src/"
+        application:
+          container_opts:
+            container_opts: "-e"
+            container_compss_path: "/opt/view/compss"
+          arguments:
+            - "${cluster1_input_path}/data.txt"
+            - "${cluster1_output_path}/result.txt"
+            - 3000
+          command: "/wordcount/src/wordcount_blocks.py"
+        keep_environment: true
+      requirements:
+        - dependsOnDlsdagImageTransferFeature:
+            type_requirement: img_transfer
+            node: DLSDAGImageTransferCluster1
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+        - dependsOnStageInDataFeature:
+            type_requirement: dependency
+            node: StageInDataCluster1
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+        - dependsOnAbstractEnvironmentExec_env:
+            type_requirement: environment
+            node: Cluster1Environment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+    StageOutDataCluster1:
+      metadata:
+        a4c_edit_x: "-554"
+        a4c_edit_y: 157
+      type: dls.ansible.nodes.DLSDAGStageOutData
+      properties:
+        mid: { get_input: mid }
+        register: { get_input: register_result_in_datacat }
+        input_name_for_mid: mid
+        input_name_for_source_path: "cluster1_output_path"
+        input_name_for_register: register
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
+        dag_id: "upload_example"
+        debug: { get_input: debug }
+        user_id: ""
+        vault_id: ""
+        run_in_standard_mode: false
+      requirements:
+        - dependsOnAbstractEnvironmentExec_env:
+            type_requirement: environment
+            node: Cluster1Environment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+        - dependsOnPyCompsJobFeature:
+            type_requirement: dependency
+            node: PyCOMPSJobCluster1
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+    Cluster1Environment:
+      metadata:
+        a4c_edit_x: 220
+        a4c_edit_y: 90
+      type: eflows4hpc.env.nodes.AbstractEnvironment
+    Cluster2Environment:
+      metadata:
+        a4c_edit_x: 230
+        a4c_edit_y: 186
+      type: eflows4hpc.env.nodes.AbstractEnvironment
+    DLSDAGImageTransferCluster2:
+      metadata:
+        a4c_edit_x: "-43"
+        a4c_edit_y: 454
+      type: dls.ansible.nodes.DLSDAGImageTransfer
+      properties:
+        target_path: { get_input: container_image_transfer_directory_cluster2 }
+        run_in_standard_mode: true
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
+        dag_id: "transfer_image"
+        debug: { get_input: debug }
+        user_id: { get_input: user_id }
+        vault_id: { get_input: vault_id }
+      requirements:
+        - dependsOnImageCreationCluster1Feature:
+            type_requirement: dependency
+            node: ImageCreationCluster1
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+        - dependsOnCluster2EnvironmentExec_env:
+            type_requirement: environment
+            node: Cluster2Environment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+        - dependsOnDlsdagImageTransferCluster1Feature:
+            type_requirement: dependency
+            node: DLSDAGImageTransferCluster1
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+    StageInDataCluster2:
+      metadata:
+        a4c_edit_x: "-47"
+        a4c_edit_y: 364
+      type: dls.ansible.nodes.DLSDAGStageInData
+      properties:
+        input_name_for_oid: oid
+        input_name_for_target_path: "cluster2_input_path"
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
+        dag_id: "taskflow_example"
+        debug: { get_input: debug }
+        user_id: ""
+        vault_id: ""
+        run_in_standard_mode: false
+      requirements:
+        - dependsOnCluster2EnvironmentExec_env:
+            type_requirement: environment
+            node: Cluster2Environment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+    PyCOMPSJobCluster2:
+      metadata:
+        a4c_edit_x: "-303"
+        a4c_edit_y: 284
+      type: org.eflows4hpc.pycompss.plugin.nodes.PyCOMPSJob
+      properties:
+        submission_params:
+          qos: debug
+          python_interpreter: python3
+          num_nodes: 1
+          extra_compss_opts: "--pythonpath=/wordcount/src/"
+        application:
+          container_opts:
+            container_opts: "-e"
+            container_compss_path: "/opt/view/compss"
+          arguments:
+            - "${cluster2_input_path}/data.txt"
+            - "${cluster2_output_path}/result.txt"
+            - 3000
+          command: "/wordcount/src/wordcount_blocks.py"
+        keep_environment: true
+      requirements:
+        - dependsOnDlsdagImageTransferCluster2Feature:
+            type_requirement: img_transfer
+            node: DLSDAGImageTransferCluster2
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+        - dependsOnStageInDataCluster2Feature:
+            type_requirement: dependency
+            node: StageInDataCluster2
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+        - dependsOnCluster2EnvironmentExec_env:
+            type_requirement: environment
+            node: Cluster2Environment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+    StageOutDataCluster2:
+      metadata:
+        a4c_edit_x: "-560"
+        a4c_edit_y: 242
+      type: dls.ansible.nodes.DLSDAGStageOutData
+      properties:
+        mid: { get_input: mid }
+        register: { get_input: register_result_in_datacat }
+        input_name_for_mid: mid
+        input_name_for_source_path: "cluster2_output_path"
+        input_name_for_register: register
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
+        dag_id: "upload_example"
+        debug: { get_input: debug }
+        user_id: ""
+        vault_id: ""
+        run_in_standard_mode: false
+      requirements:
+        - dependsOnPyCompsJobCluster2Feature:
+            type_requirement: dependency
+            node: PyCOMPSJobCluster2
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+        - dependsOnCluster2EnvironmentExec_env:
+            type_requirement: environment
+            node: Cluster2Environment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+  workflows:
+    exec_job:
+      inputs:
+        user_id:
+          type: string
+          required: true
+        vault_id:
+          type: string
+          required: true
+        oid:
+          type: string
+          required: true
+        cluster1_input_path:
+          type: string
+          required: true
+        cluster1_output_path:
+          type: string
+          required: true
+        cluster2_input_path:
+          type: string
+          required: true
+        cluster2_output_path:
+          type: string
+          required: true
+        num_nodes:
+          type: integer
+          required: false
+          default: 1
+      steps:
+        StageInDataCluster1_run:
+          target: StageInDataCluster1
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - StageInDataCluster1_executed
+        StageOutDataCluster1_run:
+          target: StageOutDataCluster1
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - StageOutDataCluster1_executed
+        StageOutDataCluster1_submit:
+          target: StageOutDataCluster1
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - StageOutDataCluster1_submitted
+        StageInDataCluster1_submitted:
+          target: StageInDataCluster1
+          activities:
+            - set_state: submitted
+          on_success:
+            - StageInDataCluster1_executing
+        PyCOMPSJobCluster1_submitting:
+          target: PyCOMPSJobCluster1
+          activities:
+            - set_state: submitting
+          on_success:
+            - PyCOMPSJobCluster1_submit
+        PyCOMPSJobCluster1_submit:
+          target: PyCOMPSJobCluster1
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - PyCOMPSJobCluster1_submitted
+        PyCOMPSJobCluster1_executing:
+          target: PyCOMPSJobCluster1
+          activities:
+            - set_state: executing
+          on_success:
+            - PyCOMPSJobCluster1_run
+        StageInDataCluster1_executing:
+          target: StageInDataCluster1
+          activities:
+            - set_state: executing
+          on_success:
+            - StageInDataCluster1_run
+        PyCOMPSJobCluster1_executed:
+          target: PyCOMPSJobCluster1
+          activities:
+            - set_state: executed
+          on_success:
+            - StageOutDataCluster1_submitting
+        StageInDataCluster1_executed:
+          target: StageInDataCluster1
+          activities:
+            - set_state: executed
+          on_success:
+            - PyCOMPSJobCluster1_submitting
+        PyCOMPSJobCluster1_submitted:
+          target: PyCOMPSJobCluster1
+          activities:
+            - set_state: submitted
+          on_success:
+            - PyCOMPSJobCluster1_executing
+        StageOutDataCluster1_submitted:
+          target: StageOutDataCluster1
+          activities:
+            - set_state: submitted
+          on_success:
+            - StageOutDataCluster1_executing
+        StageInDataCluster1_submitting:
+          target: StageInDataCluster1
+          activities:
+            - set_state: submitting
+          on_success:
+            - StageInDataCluster1_submit
+        StageInDataCluster1_submit:
+          target: StageInDataCluster1
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - StageInDataCluster1_submitted
+        StageOutDataCluster1_submitting:
+          target: StageOutDataCluster1
+          activities:
+            - set_state: submitting
+          on_success:
+            - StageOutDataCluster1_submit
+        PyCOMPSJobCluster1_run:
+          target: PyCOMPSJobCluster1
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - PyCOMPSJobCluster1_executed
+        StageOutDataCluster1_executed:
+          target: StageOutDataCluster1
+          activities:
+            - set_state: executed
+        StageOutDataCluster1_executing:
+          target: StageOutDataCluster1
+          activities:
+            - set_state: executing
+          on_success:
+            - StageOutDataCluster1_run
+        StageInDataCluster2_run:
+          target: StageInDataCluster2
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - StageInDataCluster2_executed
+        StageOutDataCluster2_run:
+          target: StageOutDataCluster2
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - StageOutDataCluster2_executed
+        StageOutDataCluster2_submit:
+          target: StageOutDataCluster2
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - StageOutDataCluster2_submitted
+        StageInDataCluster2_submitted:
+          target: StageInDataCluster2
+          activities:
+            - set_state: submitted
+          on_success:
+            - StageInDataCluster2_executing
+        PyCOMPSJobCluster2_submitting:
+          target: PyCOMPSJobCluster2
+          activities:
+            - set_state: submitting
+          on_success:
+            - PyCOMPSJobCluster2_submit
+        PyCOMPSJobCluster2_submit:
+          target: PyCOMPSJobCluster2
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - PyCOMPSJobCluster2_submitted
+        PyCOMPSJobCluster2_executing:
+          target: PyCOMPSJobCluster2
+          activities:
+            - set_state: executing
+          on_success:
+            - PyCOMPSJobCluster2_run
+        StageInDataCluster2_executing:
+          target: StageInDataCluster2
+          activities:
+            - set_state: executing
+          on_success:
+            - StageInDataCluster2_run
+        PyCOMPSJobCluster2_executed:
+          target: PyCOMPSJobCluster2
+          activities:
+            - set_state: executed
+          on_success:
+            - StageOutDataCluster2_submitting
+        StageInDataCluster2_executed:
+          target: StageInDataCluster2
+          activities:
+            - set_state: executed
+          on_success:
+            - PyCOMPSJobCluster2_submitting
+        PyCOMPSJobCluster2_submitted:
+          target: PyCOMPSJobCluster2
+          activities:
+            - set_state: submitted
+          on_success:
+            - PyCOMPSJobCluster2_executing
+        StageOutDataCluster2_submitted:
+          target: StageOutDataCluster2
+          activities:
+            - set_state: submitted
+          on_success:
+            - StageOutDataCluster2_executing
+        StageInDataCluster2_submitting:
+          target: StageInDataCluster2
+          activities:
+            - set_state: submitting
+          on_success:
+            - StageInDataCluster2_submit
+        StageInDataCluster2_submit:
+          target: StageInDataCluster2
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - StageInDataCluster2_submitted
+        StageOutDataCluster2_submitting:
+          target: StageOutDataCluster2
+          activities:
+            - set_state: submitting
+          on_success:
+            - StageOutDataCluster2_submit
+        PyCOMPSJobCluster2_run:
+          target: PyCOMPSJobCluster2
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - PyCOMPSJobCluster2_executed
+        StageOutDataCluster2_executed:
+          target: StageOutDataCluster2
+          activities:
+            - set_state: executed
+        StageOutDataCluster2_executing:
+          target: StageOutDataCluster2
+          activities:
+            - set_state: executing
+          on_success:
+            - StageOutDataCluster2_run
