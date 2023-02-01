@@ -10,11 +10,11 @@ description: ""
 imports:
   - yorc-types:1.1.0
   - tosca-normative-types:1.0.0-ALIEN20
-  - dls.ansible:1.2.0-SNAPSHOT
+  - dls.ansible:1.2.0
   - alien-base-types:3.0.0
-  - eflows4hpc.env:1.0.0-SNAPSHOT
-  - imagecreation.ansible:1.2.0-SNAPSHOT
-  - org.eflows4hpc.pycompss.plugin:1.0.0-SNAPSHOT
+  - eflows4hpc.env:1.0.0
+  - imagecreation.ansible:1.2.0
+  - org.eflows4hpc.pycompss.plugin:1.0.0
 
 topology_template:
   inputs:
