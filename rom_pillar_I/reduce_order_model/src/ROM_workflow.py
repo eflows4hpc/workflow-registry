@@ -88,7 +88,7 @@ def load_model_parameters(model_file):
 
 @dt("blocks", load_blocks_rechunk, shape=expected_shape, block_size=simulation_block_size,
     new_block_size=desired_block_size, is_workflow=True)
-@software(config_file = SW_CATALOG + "/dislib/dislib.json")
+@software(config_file = SW_CATALOG + "/py-dislib/dislib.json")
 def rSVD(blocks, desired_rank=30):
     from dislib_randomized_svd import rsvd
     u,s = rsvd(blocks, desired_rank, A_row_chunk_size, A_column_chunk_size)
@@ -99,7 +99,7 @@ def rSVD(blocks, desired_rank=30):
     new_block_size=desired_block_size, is_workflow=True)
 @dt("SnapshotsMatrixFOM", load_blocks_rechunk, shape=expected_shape, block_size=simulation_block_size,
     new_block_size=desired_block_size, is_workflow=True)
-@software(config_file = SW_CATALOG + "/dislib/dislib.json")
+@software(config_file = SW_CATALOG + "/py-dislib/dislib.json")
 def compare_ROM_vs_FOM(SnapshotsMatrixROM, SnapshotsMatrixFOM):
     import dislib as ds
     import numpy as np
