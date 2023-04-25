@@ -1,0 +1,8 @@
+apt:
+        - grace
+pip:
+        - pillow
+        - pycompss
+spack:
+        specs:
+                - gromacs
