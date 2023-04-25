@@ -3,4 +3,4 @@ spack:
                 - compss
                 - py-pillow
                 - grace
-                - gromacs
+                - gromacs +blas +lapack
