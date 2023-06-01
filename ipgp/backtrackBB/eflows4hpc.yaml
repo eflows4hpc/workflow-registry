@@ -1,0 +1,9 @@
+spack:
+        specs:
+                - compss@3.1
+                - py-scipy
+                - proj@7.0.0
+pip:
+        - obspy==1.2.1
+        - pyproj==2.6.0
+        - rocrate

@@ -1,8 +1,8 @@
 apt:
         - grace
 pip:
-        - pillow
-        - pycompss
+        - pillow        
 spack:
         specs:
-                - gromacs
+                - compss
+                - gromacs+blas+lapack
