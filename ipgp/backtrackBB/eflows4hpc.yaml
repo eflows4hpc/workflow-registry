@@ -3,7 +3,7 @@ apt:
 spack:
         specs:
                 - compss@3.1
-                - py-scipy
+                - py-scipy@1.4.1^numpy@1.8
                 - proj@7.0.0 curl=False tiff=False
 pip:
         - obspy==1.2.1
