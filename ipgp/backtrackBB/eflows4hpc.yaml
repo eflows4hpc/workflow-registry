@@ -3,9 +3,9 @@ apt:
 spack:
         specs:
                 - compss@3.1
-                - py-scipy@1.4.1^py-numpy@1.18.1
+                - py-scipy
                 - proj@7.0.0 curl=False tiff=False
 pip:
-        - obspy==1.2.1
+        - obspy==1.2.2
         - pyproj==2.6.0
         - rocrate
