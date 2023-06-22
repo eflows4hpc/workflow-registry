@@ -1,9 +1,9 @@
 spack:
         specs:
                 - t-hysea
-                - py-numpy@1.21
-                - py-scipy@1.7.1
-                - py-h5py@3.4.0 
+                - py-numpy
+                - py-scipy
+                - py-h5py 
 pip:
        - xarray==0.16.1
        - utm==0.7.0
