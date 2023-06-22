@@ -1,0 +1,10 @@
+apt:
+        - grace
+spack:
+        specs:
+                - compss
+                - py-ezyrb
+pip:
+        - graphviz
+        - matplotlib
+
