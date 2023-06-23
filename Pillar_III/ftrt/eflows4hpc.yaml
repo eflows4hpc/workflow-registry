@@ -1,6 +1,7 @@
 spack:
         specs:
                 - t-hysea
+                - compss
                 - py-numpy
                 - py-scipy
                 - py-h5py 
