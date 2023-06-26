@@ -10,7 +10,7 @@ pip:
        - utm==0.7.0
        - xarray==0.16.1
        - utm==0.7.0
-       - ismember==1.2.0
+       - ismember==1.0.2
        - folium==0.14.0
        - shapely==1.8.4
        - mat4py==0.5.0
