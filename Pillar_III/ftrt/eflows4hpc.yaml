@@ -4,7 +4,8 @@ spack:
                 - compss
                 - py-numpy
                 - py-scipy
-                - py-h5py 
+                - py-h5py
+                - py-cython 
 pip:
        - xarray==0.16.1
        - utm==0.7.0
