@@ -5,8 +5,9 @@ spack:
                 - py-numpy
                 - py-scipy
                 - py-h5py
-                - py-cython 
+                 
 pip:
+       - cython
        - xarray==0.16.1
        - utm==0.7.0
        - xarray==0.16.1
