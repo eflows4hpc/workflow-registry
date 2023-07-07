@@ -1,3 +1,6 @@
+apt:
+        - libxml2-dev
+        - libxslt-dev
 spack:
         specs:
                 - t-hysea
