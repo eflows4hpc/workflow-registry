@@ -1,6 +1,7 @@
 apt:
         - libxml2-dev
         - libxslt-dev
+        - libjpeg-dev
 spack:
         specs:
                 - t-hysea
