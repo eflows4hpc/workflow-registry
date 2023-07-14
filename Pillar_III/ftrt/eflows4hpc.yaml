@@ -12,6 +12,7 @@ spack:
                 - py-h5py
                 - py-pandas
                 - py-cython
+                - py-shapely
                  
 pip:
        - xarray==0.16.1
