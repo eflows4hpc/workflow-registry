@@ -3,6 +3,9 @@ apt:
         - libxslt-dev
         - libjpeg-dev
 spack:
+        packages:
+                alll:
+                        compiler: [ gcc@8 ]
         specs:
                 - t-hysea
                 - t-hysea-lb
