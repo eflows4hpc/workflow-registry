@@ -4,7 +4,7 @@ apt:
         - libjpeg-dev
 spack:
         packages:
-                alll:
+                all:
                         compiler: [ gcc@8 ]
         specs:
                 - t-hysea
