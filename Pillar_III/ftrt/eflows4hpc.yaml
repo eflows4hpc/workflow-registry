@@ -2,6 +2,7 @@ apt:
         - libxml2-dev
         - libxslt-dev
         - libjpeg-dev
+        - libgeos-dev  
 spack:
         packages:
                 all:
@@ -10,7 +11,6 @@ spack:
                 - t-hysea
                 - t-hysea-lb
                 - compss
-                - py-cython
                 - py-numpy
                 - py-scipy
                 - py-h5py
@@ -30,5 +30,9 @@ pip:
        - matplotlib==3.4.3
        - reverse_geocoder==1.5.1
        - tornado==6.1
+       - cython
+       - shapely
+       - dill
+
 
 
