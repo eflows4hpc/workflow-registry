@@ -1,0 +1,6 @@
+spack:
+        specs:
+                - cassandra
+                - compss
+                - fesom2@eflows4hpc
+                - py-dislib

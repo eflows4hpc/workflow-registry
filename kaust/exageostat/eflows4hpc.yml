@@ -1,0 +1,17 @@
+variants:
+        default:
+                spack:
+                        specs:
+                                - exageostat@master
+        cuda:
+                spack:
+                        specs:
+                                - exageostat@master+cuda
+        mpi:
+                spack:
+                        specs:
+                                - exageostat@master+mpi
+        mpi_cuda:
+                spack:
+                        specs:
+                                - exageostat@master+mpi+cuda

@@ -1,0 +1,8 @@
+apt:
+        - grace
+pip:
+        - pillow        
+spack:
+        specs:
+                - compss
+                - gromacs+blas+lapack

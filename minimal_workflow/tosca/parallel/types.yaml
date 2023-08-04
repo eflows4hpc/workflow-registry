@@ -10,11 +10,11 @@ description: ""
 imports:
   - yorc-types:1.1.0
   - tosca-normative-types:1.0.0-ALIEN20
-  - dls.ansible:1.2.0
+  - dls.ansible:1.3.0
   - alien-base-types:3.0.0
-  - eflows4hpc.env:1.0.0
-  - imagecreation.ansible:1.2.0
-  - org.eflows4hpc.pycompss.plugin:1.0.0
+  - eflows4hpc.env:1.1.0
+  - imagecreation.ansible:1.3.0
+  - org.eflows4hpc.pycompss.plugin:1.1.0
 
 topology_template:
   inputs:
@@ -65,11 +65,19 @@ topology_template:
           container_engine: singularity
           platform: "linux/amd64"
           architecture: rome
+          mpi: "openmpi@4"
+          gpu: "cuda@10.2"
         workflow: "minimal_workflow"
         step_id: wordcount
         force: false
         debug: { get_input: debug }
         run_in_standard_mode: true
+      requirements:
+        - dependsOnCluster1EnvironmentExec_env:
+            type_requirement: environment
+            node: Cluster1Environment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
     DLSDAGImageTransferCluster1:
       metadata:
         a4c_edit_x: "-49"
