@@ -10,7 +10,7 @@ spack:
         specs:
                 - t-hysea
                 - t-hysea-lb
-                - compss
+                - compss@eflows4hpc
                 - py-numpy
                 - py-scipy
                 - py-h5py

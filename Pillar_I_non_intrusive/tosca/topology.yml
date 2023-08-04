@@ -1,0 +1,321 @@
+tosca_definitions_version: alien_dsl_3_0_0
+
+metadata:
+  template_name: PillarINonIntrusive
+  template_version: 0.1.0-SNAPSHOT
+  template_author: jorge
+
+description: ""
+
+imports:
+  - eflows4hpc.env:1.1.0
+  - yorc-types:1.1.0
+  - tosca-normative-types:1.0.0-ALIEN20
+  - dls.ansible:1.4.0-SNAPSHOT
+  - alien-base-types:3.0.0
+  - imagecreation.ansible:1.3.0-SNAPSHOT
+  - org.eflows4hpc.pycompss.plugin:1.1.0-SNAPSHOT
+
+topology_template:
+  inputs:
+    debug:
+      type: boolean
+      required: true
+      default: false
+      description: "Do not redact sensible information on logs"
+    user_id:
+      type: string
+      required: false
+      default: ""
+      description: "User id to use for authentication may be replaced with workflow input"
+    vault_id:
+      type: string
+      required: false
+      default: ""
+      description: "User id to use for authentication may be replaced with workflow input"
+    container_image_transfer_directory:
+      type: string
+      required: false
+      description: "path of the image on the remote host"
+  node_templates:
+    HPC_Environment:
+      metadata:
+        a4c_edit_x: 1073
+        a4c_edit_y: "-511"
+      type: eflows4hpc.env.nodes.AbstractEnvironment
+    ROM_Computation:
+      metadata:
+        a4c_edit_x: 307
+        a4c_edit_y: "-244"
+      type: org.eflows4hpc.pycompss.plugin.nodes.PyCOMPSJob
+      properties:
+        submission_params: 
+          qos: debug
+          python_interpreter: python3
+          num_nodes: 2
+          extra_compss_opts: "--worker_working_dir=${run_path} --job_execution_dir=${run_path} --env_script=/EZyRB/env.sh"
+        application: 
+          container_opts: 
+            container_opts: "-e"
+            container_compss_path: "/opt/view/compss"
+          arguments: 
+            - "${Case_type}"
+            - "${Reduction_method}"
+          command: "/EZyRB/src/ezyrb_test.py"
+        keep_environment: true
+      requirements:
+        - dependsOnDlsdagImageTransferFeature:
+            type_requirement: img_transfer
+            node: ImageTransfer
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+        - dependsOnHttp2SshFeature:
+            type_requirement: dependency
+            node: Data_Dowload
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+        - dependsOnAbstractEnvironment2Exec_env:
+            type_requirement: environment
+            node: HPC_Environment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+    ImageCreation:
+      metadata:
+        a4c_edit_x: 776
+        a4c_edit_y: "-525"
+      type: imagecreation.ansible.nodes.ImageCreation
+      properties:
+        service_url: "https://zam10109.zam.kfa-juelich.de/image_creation"
+        insecure_tls: true
+        username: { get_secret: [/secret/data/services_secrets/image_creation, data=user] }
+        password: { get_secret: [/secret/data/services_secrets/image_creation, data=password] }
+        machine: 
+          container_engine: singularity
+          mpi: "intel-mpi@4"
+          gpu: "cuda@9"
+          platform: "linux/amd64"
+          architecture: sandybridge
+        workflow: "Pillar_I_non_intrusive"
+        step_id: EZyRB
+        force: false
+        debug: { get_input: debug }
+        run_in_standard_mode: true
+      requirements:
+        - dependsOnAbstractEnvironment2Exec_env:
+            type_requirement: environment
+            node: HPC_Environment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+    ImageTransfer:
+      metadata:
+        a4c_edit_x: 455
+        a4c_edit_y: "-524"
+      type: dls.ansible.nodes.DLSDAGImageTransfer
+      properties:
+        image_builder_url: "https://zam10109.zam.kfa-juelich.de/image_creation"
+        image_builder_vault_secret_path: "/services_secrets/image_creation"
+        image_id: "not_used"
+        target_path: { get_input: container_image_transfer_directory }
+        run_in_standard_mode: true
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
+        dag_id: "transfer_image"
+        debug: { get_input: debug }
+        user_id: { get_input: user_id }
+        vault_id: { get_input: vault_id }
+      requirements:
+        - dependsOnImageCreationFeature:
+            type_requirement: dependency
+            node: ImageCreation
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+        - dependsOnAbstractEnvironment2Exec_env:
+            type_requirement: environment
+            node: HPC_Environment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+    Data_Dowload:
+      metadata:
+        a4c_edit_x: 510
+        a4c_edit_y: "-370"
+      type: dls.ansible.nodes.DLSDAGWebdavStageInData
+      properties:
+        dag_id: "webdav_stagein"
+        input_name_for_oid: "data_oid"
+        input_name_for_target_path: "run_path"
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
+        debug: { get_input: debug }
+        user_id: ""
+        vault_id: ""
+        run_in_standard_mode: false
+      requirements:
+        - dependsOnAbstractEnvironment2Exec_env:
+            type_requirement: environment
+            node: HPC_Environment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+    ROM_Upload:
+      metadata:
+        a4c_edit_x: 297
+        a4c_edit_y: "-139"
+      type: dls.ansible.nodes.DLSDAGWebdavStageOutData
+      properties:
+        dag_id: "webdav_stageout"
+        input_name_for_oid: "results_oid"
+        input_name_for_source_path: "results_path"
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
+        debug: { get_input: debug }
+        user_id: ""
+        vault_id: ""
+        run_in_standard_mode: false
+      requirements:
+        - dependsOnPyCompsJob2Feature:
+            type_requirement: dependency
+            node: ROM_Computation
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+        - dependsOnAbstractEnvironment2Exec_env:
+            type_requirement: environment
+            node: HPC_Environment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+  workflows:
+    rom_computation:
+      inputs:
+        user_id:
+          type: string
+          required: true
+        vault_id:
+          type: string
+          required: true
+        results_path:
+          type: string
+          required: true
+        run_path:
+          type: string
+          required: true
+        data_oid:
+          type: string
+          required: true
+        results_oid:
+          type: string
+          required: true
+        num_nodes:
+          type: integer
+          required: false
+          default: 1
+      steps:
+        Results_Upload_executing:
+          target: ROM_Upload
+          activities:
+            - set_state: executing
+          on_success:
+            - Results_Upload_run
+        Data_Download_submitted:
+          target: Data_Dowload
+          activities:
+            - set_state: submitted
+          on_success:
+            - Data_Download_executing
+        PyCOMPSJob_submitting:
+          target: ROM_Computation
+          activities:
+            - set_state: submitting
+          on_success:
+            - PyCOMPSJob_submit
+        PyCOMPSJob_submit:
+          target: ROM_Computation
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - PyCOMPSJob_submitted
+        Results_Upload_submitted:
+          target: ROM_Upload
+          activities:
+            - set_state: submitted
+          on_success:
+            - Results_Upload_executing
+        Results_Upload_submitting:
+          target: ROM_Upload
+          activities:
+            - set_state: submitting
+          on_success:
+            - Results_Upload_submit
+        Results_Upload_run:
+          target: ROM_Upload
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - Results_Upload_executed
+        Data_Download_executing:
+          target: Data_Dowload
+          activities:
+            - set_state: executing
+          on_success:
+            - Data_Download_run
+        PyCOMPSJob_submitted:
+          target: ROM_Computation
+          activities:
+            - set_state: submitted
+          on_success:
+            - PyCOMPSJob_executing
+        Data_Download_submitting:
+          target: Data_Dowload
+          activities:
+            - set_state: submitting
+          on_success:
+            - Data_Download_submit
+        Results_Upload_submit:
+          target: ROM_Upload
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - Results_Upload_submitted
+        Data_Download_run:
+          target: Data_Dowload
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - Data_Download_executed
+        Data_Download_executed:
+          target: Data_Dowload
+          activities:
+            - set_state: executed
+          on_success:
+            - PyCOMPSJob_submitting
+        Results_Upload_executed:
+          target: ROM_Upload
+          activities:
+            - set_state: executed
+        PyCOMPSJob_executing:
+          target: ROM_Computation
+          activities:
+            - set_state: executing
+          on_success:
+            - PyCOMPSJob_run
+        Data_Download_submit:
+          target: Data_Dowload
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - Data_Download_submitted
+        PyCOMPSJob_executed:
+          target: ROM_Computation
+          activities:
+            - set_state: executed
+          on_success:
+            - Results_Upload_submitting
+        PyCOMPSJob_run:
+          target: ROM_Computation
+          operation_host: ORCHESTRATOR
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - PyCOMPSJob_executed
