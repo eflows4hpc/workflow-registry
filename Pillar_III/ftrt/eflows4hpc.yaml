@@ -3,6 +3,7 @@ apt:
         - libxslt-dev
         - libjpeg-dev
         - libgeos-dev  
+        - bc
 spack:
         packages:
                 all:
