@@ -93,6 +93,10 @@ def append_and_evaluate(ptf_files, ptf_file, args, config_file, sim_files_step1,
             sim_files_input=sim_files_step1
         run_step3_init(args, sim_files_input, out_final, sim_pois_ts, ptf_files)
 
+@binary(binary="tar", args="zcvf {{outfile}} {{folder}}")
+@task(outfile=FILE_OUT)
+def compress(folder, outfile, ptf_files):
+    pass
 
 def build_steps_dirs(exec_dir, seistype):
      files_step1 = exec_dir + "/ptf_local_step1/"
@@ -181,5 +185,6 @@ if __name__ == '__main__':
          # Compute a final evaluation if final group was not multiple of group_sims
          if (group_sims == 0) or (sims % group_sims != 0):
               append_and_evaluate(ptf_files, ptf_file, args, config_file, files_step1, files_step2, intermediate_files, files_step3, depth_file, log_file, sim_pois_ts, 1, kag, tsu, ts_result)
+         compress(files_step3, exec_dir+"/results_" + event_id + "_" + seistype + ".tar.gz", ptf_files)
     
 

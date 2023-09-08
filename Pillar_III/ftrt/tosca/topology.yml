@@ -1,53 +1,81 @@
 tosca_definitions_version: alien_dsl_3_0_0
 
 metadata:
-  template_name: PTF_Workflow
-  template_version: 0.1.0
+  template_name: PTFWorkflow
+  template_version: 0.2.2-SNAPSHOT
   template_author: jorge
 
-description: ""
+description: "Probabilistic Tsunami Forecast Workflow"
 
 imports:
   - eflows4hpc.env:1.1.0
   - yorc-types:1.1.0
   - tosca-normative-types:1.0.0-ALIEN20
   - alien-base-types:3.0.0
+  - imagecreation.ansible:1.3.0
+  - dls.ansible:1.4.2-SNAPSHOT
   - org.eflows4hpc.pycompss.plugin:1.1.0
 
 topology_template:
+  inputs:
+    images_path:
+      type: string
+      required: true
+      description: "path to store the workflow container image in the HPC system"
+    data_path:
+      type: string
+      required: true
+      description: "path to store the data in the HPC system"
+    region_data_oid:
+      type: string
+      required: true
+      description: "object ID in the data catalogue with the access description to the region dataset"
+    templates_oid:
+      type: string
+      required: true
+      description: "object ID in the data catalogue with the access description to the simulation templates dataset"
+    vault_id:
+      type: string
+      required: true
+      description: "User id to use for authentication may be replaced with workflow input"
+    user_id:
+      type: string
+      required: true
+      description: "User id to use for authentication may be replaced with workflow input"
   node_templates:
     AbstractEnvironment:
       metadata:
-        a4c_edit_x: 229
-        a4c_edit_y: "-1"
+        a4c_edit_x: 954
+        a4c_edit_y: "-48"
       type: eflows4hpc.env.nodes.AbstractEnvironment
     PyCOMPSJob:
       metadata:
-        a4c_edit_x: "-9"
-        a4c_edit_y: 0
+        a4c_edit_x: "-36"
+        a4c_edit_y: 77
       type: org.eflows4hpc.pycompss.plugin.nodes.PyCOMPSJob
       properties:
         submission_params: 
-          qos: debug
+          qos: "${qos}"
           python_interpreter: python3
           num_nodes: 1
-          extra_compss_opts: "--env_script=${app_path}/env.sh --exec_time=${exec_time}"
+          extra_compss_opts: "--env_script=/ftrt/env.sh --worker_working_dir=${run_path} --job_execution_dir=${run_path} --exec_time=${exec_time} --reservation=jorge_ejarque --container_opts='--nv'"
         application: 
           container_opts: 
-            container_opts: "-e"
+            container_opts: "'-e'"
+            container_compss_path: "/apps/COMPSs/TrunkJEA"
           arguments: 
-            - "--seistype $seis_type"
-            - "--parameters_file $parameters_file"
-            - "--data_path ${data_path}"
+            - "--seistype ${seis_type}"
+            - "--parameters_file ${parameters_file}"
+            - "--data_path ${data_path}/Regions/"
             - "--run_path ${run_path}"
-            - "--templates_path ${templates_path}"
+            - "--templates_path ${data_path}/Templates/"
             - "--kagan_weight ${kagan_weight}"
             - "--mare_weight ${mare_weight}"
             - "--hours ${hours}"
             - "--group_sims=${group_sims}"
             - "--cfg from_template"
             - "--event ${event}"
-          command: "${app_path}/Code/launch_pycompss.py"
+          command: "/ftrt/Code/launch_pycompss.py"
         keep_environment: true
       requirements:
         - dependsOnAbstractEnvironmentExec_env:
@@ -55,38 +83,195 @@ topology_template:
             node: AbstractEnvironment
             capability: eflows4hpc.env.capabilities.ExecutionEnvironment
             relationship: tosca.relationships.DependsOn
+        - dependsOnParameterFileStageInFeature:
+            type_requirement: dependency
+            node: ParameterFile_StageIn
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+        - dependsOnRegionDataDeploymentFeature:
+            type_requirement: dependency
+            node: RegionData_Deployment
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+        - dependsOnConfigTemplatesDeploymentFeature:
+            type_requirement: dependency
+            node: Config_Templates_Deployment
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+        - dependsOnDlsdagImageTransferFeature:
+            type_requirement: img_transfer
+            node: ImageTransfer
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+    RegionData_Deployment:
+      metadata:
+        a4c_edit_x: 444
+        a4c_edit_y: "-201"
+      type: dls.ansible.nodes.DLSDAGWebdavStageInData
+      properties:
+        dag_id: "webdav_stagein"
+        oid: { get_input: region_data_oid }
+        target_path: { get_input: data_path }
+        input_name_for_oid: oid
+        input_name_for_target_path: "target_path"
+        force: false
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
+        debug: true
+        user_id: { get_input: user_id }
+        vault_id: { get_input: vault_id }
+        run_in_standard_mode: true
+      requirements:
+        - dependsOnAbstractEnvironmentExec_env:
+            type_requirement: environment
+            node: AbstractEnvironment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+    Config_Templates_Deployment:
+      metadata:
+        a4c_edit_x: 445
+        a4c_edit_y: "-136"
+      type: dls.ansible.nodes.DLSDAGWebdavStageInData
+      properties:
+        dag_id: "webdav_stagein"
+        oid: { get_input: templates_oid }
+        target_path: { get_input: data_path }
+        input_name_for_oid: oid
+        input_name_for_target_path: "target_path"
+        force: false
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
+        debug: true
+        user_id: { get_input: user_id }
+        vault_id: { get_input: vault_id }
+        run_in_standard_mode: true
+      requirements:
+        - dependsOnAbstractEnvironmentExec_env:
+            type_requirement: environment
+            node: AbstractEnvironment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+    Results_StageOut:
+      metadata:
+        a4c_edit_x: "-74"
+        a4c_edit_y: 178
+      type: dls.ansible.nodes.DLSDAGWebdavStageOutData
+      properties:
+        dag_id: "webdav_stageout"
+        input_name_for_oid: "results_oid"
+        input_name_for_source_path: "results_path"
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
+        debug: true
+        user_id: ""
+        vault_id: ""
+        run_in_standard_mode: false
+      requirements:
+        - dependsOnAbstractEnvironmentExec_env:
+            type_requirement: environment
+            node: AbstractEnvironment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+        - dependsOnPyCompsJobFeature:
+            type_requirement: dependency
+            node: PyCOMPSJob
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+    ParameterFile_StageIn:
+      metadata:
+        a4c_edit_x: "-5"
+        a4c_edit_y: "-13"
+      type: dls.ansible.nodes.HTTP2SSH
+      properties:
+        dag_id: plainhttp2ssh
+        force: true
+        input_name_for_url: "parameters_url_file"
+        input_name_for_target_path: "parameters_file"
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
+        debug: true
+        user_id: ""
+        vault_id: ""
+        run_in_standard_mode: false
+      requirements:
+        - dependsOnAbstractEnvironmentExec_env:
+            type_requirement: environment
+            node: AbstractEnvironment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+    ImageCreation:
+      metadata:
+        a4c_edit_x: 665
+        a4c_edit_y: "-360"
+      type: imagecreation.ansible.nodes.ImageCreation
+      properties:
+        service_url: "https://eflows4hpc.bsc.es/image_creation"
+        insecure_tls: false
+        username: { get_secret: [/secret/data/services_secrets/image_creation, data=user] }
+        password: { get_secret: [/secret/data/services_secrets/image_creation, data=password] }
+        machine: 
+          container_engine: singularity
+          mpi: "openmpi@4"
+          gpu: "cuda@10.2"
+          platform: "linux/amd64"
+          architecture: sandybridge
+        workflow: "Pillar_III"
+        step_id: ftrt
+        force: false
+        debug: false
+        run_in_standard_mode: true
+      requirements:
+        - dependsOnAbstractEnvironmentExec_env:
+            type_requirement: environment
+            node: AbstractEnvironment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+    ImageTransfer:
+      metadata:
+        a4c_edit_x: 236
+        a4c_edit_y: "-299"
+      type: dls.ansible.nodes.DLSDAGImageTransfer
+      properties:
+        image_builder_url: "https://eflows4hpc.bsc.es/image_creation"
+        image_builder_vault_secret_path: "/services_secrets/image_creation"
+        image_id: "not_used"
+        target_path: { get_input: images_path }
+        run_in_standard_mode: true
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
+        dag_id: "transfer_image"
+        debug: true
+        user_id: { get_input: user_id }
+        vault_id: { get_input: vault_id }
+      requirements:
+        - dependsOnAbstractEnvironmentExec_env:
+            type_requirement: environment
+            node: AbstractEnvironment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+        - dependsOnImageCreationFeature:
+            type_requirement: dependency
+            node: ImageCreation
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
   workflows:
     PTFExecution:
       inputs:
-        user_id:
-          type: string
-          required: true
-        vault_id:
-          type: string
-          required: true
-        app_path:
-          type: string
-          required: true
         run_path:
           type: string
           required: true
-        data_path:
-          type: string
-          required: true
-        templates_path:
+        parameters_url_file:
           type: string
           required: true
         parameters_file:
           type: string
           required: true
-        num_nodes:
-          type: integer
-          required: false
-          default: 1
-        exec_time:
-          type: integer
-          required: false
-          default: 20
+        results_path:
+          type: string
+          required: true
+        results_oid:
+          type: string
+          required: true
         event:
           type: string
           required: true
@@ -110,14 +295,59 @@ topology_template:
           type: integer
           required: false
           default: 0
+        user_id:
+          type: string
+          required: true
+        vault_id:
+          type: string
+          required: true
+        num_nodes:
+          type: integer
+          required: false
+          default: 1
+        exec_time:
+          type: integer
+          required: false
+          default: 20
+        qos:
+          type: string
+          required: false
+          default: debug
+        data_path:
+          type: string
+          required: true
       steps:
         PyCOMPSJob_run:
           target: PyCOMPSJob
           activities:
             - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - Results_StageOut_submit
         PyCOMPSJob_submit:
           target: PyCOMPSJob
           activities:
             - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
           on_success:
             - PyCOMPSJob_run
+        ParameterFile_StageIn_submit:
+          target: ParameterFile_StageIn
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - ParameterFile_StageIn_run
+        ParameterFile_StageIn_run:
+          target: ParameterFile_StageIn
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - PyCOMPSJob_submit
+        Results_StageOut_submit:
+          target: Results_StageOut
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - Results_StageOut_run
+        Results_StageOut_run:
+          target: Results_StageOut
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
