@@ -1,5 +1,5 @@
 spack:
         specs:
                 - compss@eflows4hpc
-                - py-dislib@0.7.1
+                - py-dislib@0.8.0
                 - kratos@9.4 apps=LinearSolversApplication,FluidDynamicsApplication,StructuralMechanicsApplication,ConvectionDiffusionApplication,RomApplication,CoSimulationApplication,MappingApplication
