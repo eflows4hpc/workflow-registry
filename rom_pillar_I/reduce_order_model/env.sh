@@ -1,6 +1,7 @@
-export PYTHONPATH=/reduce_order_model/src:/opt/view/lib/python3/dist-packages/:$PYTHONPATH
-export LD_LIBRARY_PATH=/opt/view/libs:$LD_LIBRARY_PATH
-export PYTHONPATH=/opt/view/:$PYTHONPATH
+. /etc/profile.d/z10_spack_environment.sh
+export COMPSS_HOME=/opt/view/compss
+export PYTHONPATH=/opt/view/:$PWD:/opt/view/lib/python3/dist-packages/:$PYTHONPATH
+export LD_LIBRARY_PATH=$COMPSS_HOME/Bindings/bindings-common/lib/:/opt/view/libs:$LD_LIBRARY_PATH
 export ComputingUnits=8
 export KRATOS_CUS=8
 export QR_CUS=16
