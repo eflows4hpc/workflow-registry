@@ -90,7 +90,7 @@ def load_model_parameters(model_file):
     new_block_size=desired_block_size, is_workflow=True)
 @software(config_file = SW_CATALOG + "/py-dislib/dislib.json")
 def rSVD(blocks, desired_rank=30):
-    from dislib_randomized_svd import rsvd
+    from dislib_parallel_svd import rsvd
     u,s = rsvd(blocks, desired_rank, A_row_chunk_size, A_column_chunk_size)
     return u
 
