@@ -1,0 +1,41 @@
+This is the Readme for:
+Sentiment Analysis
+
+[Name]: Sentiment Analysis
+[Access Level]: public
+[License Agreement]: GPLv3
+[Platform]: COMPSs
+
+[Body]
+== Description ==
+The Sentiment Analysis application aims at analyzing the overall sentiment about a topic in a social network. A topic is defined by a set of keywords.
+
+== Execution instructions ==
+Usage for getting help:
+python3 src/sentiment_analysis.py --help
+
+Usage with COMPSs:
+
+runcompss src/sentiment_analysis.py <input_dataset> <input_dataset_format> <emoji_json_file> <visualization_file> [--keywords "<list-of-separated-words>"] [--keywords-separator <string>] [--keywords-threshold <positive-integer>] [--partition <positive-integer>] [--chunk-size <positive-integer>]
+
+where:
+
+        * input_dataset: path to the input dataset
+
+        * input_format: format of the input JSON dataset, can be: 'twitter', 'flickr', or 'parsoda'.
+
+        * emoji_file: path to the emoji dataset
+
+        * visualization_file: path to the output file
+
+        --keywords, -kw: specifies the keywords of the topic for filtering items. Defaults to "" (empty string, filtering by keywords is disabled).
+
+        --keywords-separator, -ksep: specifies the separator of the specified keywords. Defaults to ' ' (space).
+
+        --keywords-threshold, -kth: specifies the number of different keywords that must be contained in a filter item. Defaults to 1.
+
+        --partitions, -p: specifies the number of data partitions.
+
+        --chunk-size, -c:specifies the size of data partitions in megabytes.
+
+
