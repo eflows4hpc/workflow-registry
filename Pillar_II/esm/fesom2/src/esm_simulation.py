@@ -60,7 +60,7 @@ def esm_member_disposal(exp_id, sdate, top_working_dir):
 
    # TODO: remove hecuba data aswell of the concerned aborted member
    # path
-   path = os.path.join("/home/bsc32/bsc32044/results/output_core2/", sdate)
+   path = os.path.join("/gpfs/projects/dese28/eflows4hpc/rohan/output/", sdate)
    # removing directory
    shutil.rmtree(path)
    return True
@@ -151,4 +151,4 @@ if __name__ == "__main__":
           # clean generated data 
           esm_member_disposal(exp_id, sdate, top_working_dir)
           pass
-~                                                                    
+                                                                    
