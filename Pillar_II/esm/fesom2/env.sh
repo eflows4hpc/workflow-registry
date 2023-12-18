@@ -1,6 +1,7 @@
+module load COMPSs/3.2
 module use /apps/HECUBA/modulefiles
-module load Hecuba/1.2 # yolanda: update to a new module of hecuba
-#module load Hecuba/1.0_api
+module load Hecuba/2.1_intel 
+module load singularity
 # Hecuba alreadu loads a special version of Python so not needed at this stage
 #module load python
 # experiment configuration
@@ -12,7 +13,7 @@ export FESOM_CORES=144
 export QOS=debug
 export MEMBERS=1
 #export FESOM_WORKINGDIR="/home/bsc32/bsc32044/pycompss_workflow_tests/1948"
-export FESOM_EXE="/home/bsc32/bsc32044/fesom_hecuba/bin/fesom.x"
+export FESOM_EXE="/gpfs/projects/dese28/models/fesom2_eflows4hpc/fesom2/bin/fesom.x"
 #export NODE_ALLOCATION=$(((${FESOM_CORES}/48)*${MEMBERS}))
 export NODE_ALLOCATION=1
 echo "Number of cores: ${FESOM_CORES}"
