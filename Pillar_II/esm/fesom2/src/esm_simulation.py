@@ -33,7 +33,7 @@ from hecuba_lib.esm_dynamic_analysis_results import *
 
 ### to_continue in IN mode may be the problem since it behaves as inmutable (not sure...check COMPSs documentation)
 @on_failure(management='IGNORE')
-@mpi(binary="${FESOM_EXE}", runner="mpirun", processes="${FESOM_CORES}", working_dir="{{working_dir_exe}}", fail_by_exit_value=True, processes_per_node=48)
+@mpi(binary="${FESOM_EXE}", runner="srun", processes="${FESOM_CORES}", working_dir="{{working_dir_exe}}", fail_by_exit_value=True, processes_per_node=48)
 @task(log_file={Type:FILE_OUT, StdIOStream:STDOUT}, working_dir_exe={Type:INOUT, Prefix:"#"}, to_continue={Type:IN, Prefix:"#"}, returns=int)
 def esm_simulation(log_file, working_dir_exe, to_continue):
    pass
