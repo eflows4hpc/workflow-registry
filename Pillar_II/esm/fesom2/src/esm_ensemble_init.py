@@ -94,8 +94,8 @@ def esm_ensemble_init(exp_id, setup_working_env=True):
       # 1 - load ensemble config file
       print("Initialization for experiment " + str(exp_id))
       if config.has_option('common', 'top_working_dir'):
-         top_dir = config['common']['top_working_dir']
-         output_dir = config['common']['output_dir']
+         top_dir = config['common']['top_working_dir'] + "/" + str(exp_id)
+         output_dir = top_dir
          # define the access rights - readable and accessible by all users, and write access by only the owner
          access_rights = 0o755
          try:
@@ -125,7 +125,7 @@ def esm_ensemble_init(exp_id, setup_working_env=True):
                fclock.write("0 1 " + sdate)
                fclock.close()
                # generate the config files for each year/member
-               esm_ensemble_generate_namelists(exp_id, top_dir + "/" + sdate, sdate, config)
+               esm_ensemble_generate_namelists(exp_id, member_working_dir, sdate, config)
                # create symlink for FESOM2 executable for each working dir
                print("############ creating clock file  ################")
                fesom_exe = config['fesom2']['fesom_binary_path']
