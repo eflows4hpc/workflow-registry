@@ -27,3 +27,18 @@ You can check the COMPSs directory with the `expid` name. And
 you can also find useful information in a folder created under
 your user home directory, e.g. `~/.COMPSs/12345678/jobs/`.
 In this directory you will find the outputs of your Job execution.
+
+### Inspecting the Cassandra snapshots
+
+TODO: explain how to activate the generation of snapshots
+
+The snapshots will be available in a folder created in your
+home directory: `~/.c4s/`. In this folder you will have another
+subfolder with the `expid` that contains `cassandra.output`.
+This file contains the execution log for Cassandra.
+
+In the `~/.c4s/` directory, you will also have several files
+like `cassandra-snapshot-file-${expid}.txt`.
+
+You can use Python `numpy`, for instance, to access the snapshot
+data and validate that your simulation output was written correctly.
