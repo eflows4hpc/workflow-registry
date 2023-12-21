@@ -2,6 +2,3 @@ spack:
         specs:
                 - compss@3.3
                 - py-dislib
-pip:
-        - obspy==1.2.1
-        - rocrate
