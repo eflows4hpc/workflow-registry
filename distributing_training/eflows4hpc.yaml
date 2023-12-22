@@ -1,0 +1,5 @@
+spack:
+        specs:
+                - compss@3.3
+                - py-dislib
+                - py-eddl  
