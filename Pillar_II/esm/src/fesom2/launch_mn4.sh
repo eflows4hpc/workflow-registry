@@ -1,4 +1,4 @@
-#todo: to be remplaced by python file
+#todo: to be replaced by python file
 #todo: add also the launching of Hecuba storage, is it possible based on this hint
 #https://compss-doc.readthedocs.io/en/stable/Sections/06_Persistent_Storage/05_Own_interface.html?highlight=enqueue_compss#using-enqueue-compss
 
@@ -20,13 +20,12 @@ export MEMBERS=$3
 #export FESOM_WORKINGDIR="/home/bsc32/bsc32044/pycompss_workflow_tests/1948"
 export FESOM_EXE="/gpfs/projects/dese28/models/fesom2_eflows4hpc/fesom2/bin/fesom.x"
 #export NODE_ALLOCATION=$(((${FESOM_CORES}/48)*${MEMBERS}))
-export NODE_ALLOCATION=$(((${FESOM_CORES}/48)*${MEMBERS}))
+export NODE_ALLOCATION=$(((${FESOM_CORES} / 48) * ${MEMBERS}))
 echo "Number of cores: ${FESOM_CORES}"
 echo "Number of nodes to be used: ${NODE_ALLOCATION}"
 
 #added by support to prevent the segmentation fault
 ulimit -Ss unlimited
-
 
 # to address issue with srun
 COMPSS_MPI_TYPE=impi
@@ -40,18 +39,17 @@ COMPSS_MPI_TYPE=impi
 
 EXP_ID=$(printf "%06d\n" $((1 + $RANDOM % 100000)))
 
-
 # launch the esm ensemble simulation with hecuba infraestructure through COMPSs (WORKING)
-enqueue_compss -t -g -d --sc_cfg=mn.cfg  \
-               --qos=${QOS}  \
-               --storage_props=/gpfs/projects/dese28/eflows4hpc/esm/fesom2/src/hecuba_lib/storage_props.cfg \
-               --storage_home=$HECUBA_ROOT/compss \
-               --job_name=esm_workflow  \
-               --exec_time=120  \
-               --keep_workingdir \
-               --worker_working_dir=$PWD \
-               --worker_in_master_cpus=48  \
-               --num_nodes=${NODE_ALLOCATION}  \
-               --pythonpath=$PWD:$HECUBA_ROOT/compss esm_simulation.py ${EXP_ID}
-
-
+enqueue_compss -t -g -d --sc_cfg=mn.cfg \
+  --qos=${QOS} \
+  --storage_props=/gpfs/projects/dese28/eflows4hpc/esm/fesom2/src/hecuba_lib/storage_props.cfg \
+  --storage_home=$HECUBA_ROOT/compss \
+  --job_name=esm_workflow \
+  --exec_time=120 \
+  --keep_workingdir \
+  --worker_working_dir=$PWD \
+  --worker_in_master_cpus=48 \
+  --num_nodes=${NODE_ALLOCATION} \
+  --pythonpath=$PWD:$HECUBA_ROOT/compss esm_simulation.py \
+    --expid ${EXP_ID} \
+    --model fesom2

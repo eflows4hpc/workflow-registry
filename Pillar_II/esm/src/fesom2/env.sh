@@ -1,6 +1,6 @@
 module load COMPSs/3.2
 module use /apps/HECUBA/modulefiles
-module load Hecuba/2.1_intel 
+module load Hecuba/2.1_intel
 module load singularity
 # Hecuba alreadu loads a special version of Python so not needed at this stage
 #module load python
@@ -22,7 +22,6 @@ echo "Number of nodes to be used: ${NODE_ALLOCATION}"
 #added by support to prevent the segmentation fault
 ulimit -Ss unlimited
 
-
 # to address issue with srun
 export COMPSS_MPI_TYPE=impi
 
@@ -36,4 +35,3 @@ export COMPSS_MPI_TYPE=impi
 export EXP_ID=$(printf "%06d\n" $((1 + $RANDOM % 100000)))
 
 echo "################### env for workflow run DONE  ######################"
-
