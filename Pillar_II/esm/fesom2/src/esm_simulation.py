@@ -9,7 +9,6 @@ from pycompss.api.api import compss_barrier_group
 from pycompss.api.api import compss_cancel_group
 from pycompss.api.api import compss_wait_on
 from pycompss.api.exceptions import COMPSsException  # type: ignore
-# COMPSs/PyCOMPSs imports
 from pycompss.api.mpi import mpi  # type: ignore
 from pycompss.api.on_failure import on_failure  # type: ignore
 from pycompss.api.parameter import IN, Type, FILE_OUT, StdIOStream, STDOUT, INOUT, Prefix  # type: ignore
@@ -20,7 +19,6 @@ from esm_ensemble_init import esm_ensemble_init  # type: ignore
 from hecuba_lib.esm_dynamic_analysis_results import esm_dynamic_analysis_results
 
 
-### to_continue in IN mode may be the problem since it behaves as inmutable (not sure...check COMPSs documentation)
 @on_failure(management='IGNORE')
 @mpi(binary="${FESOM_EXE}", runner="srun", processes="${FESOM_CORES}", working_dir="{{working_dir_exe}}",
      fail_by_exit_value=True, processes_per_node=48)
@@ -33,7 +31,7 @@ def esm_simulation(log_file: str, working_dir_exe: str, to_continue: bool) -> An
 @on_failure(management='IGNORE')
 # Jorge: Prefix is only needed in @mpi or @binary to avoid to pass the parameter to the binary execution, res={Type:IN, Prefix:"#"})
 @task(returns=bool)
-def esm_member_checkpoint(exp_id: str, sdate: str, res) -> bool:
+def esm_member_checkpoint(exp_id: str, sdate: str, res: Any) -> bool:
     # retrieve from Hecuba the last status of the ensemble members produced by the analysis (running in parallel)
     print("Checking status member - " + sdate)
     print("%%%%%%%%%%%%%%%%%% res val is " + str(res))
@@ -64,7 +62,7 @@ def esm_dynamic_analysis(exp_id: str) -> None:
         ds.results["1948"] = False
         ds.results["1958"] = True
         ds.results["1968"] = False
-        ds.make_persistent(str(exp_id) + "_esm_dynamic_analysis")
+        ds.make_persistent(exp_id + "_esm_dynamic_analysis")
 
 
 def main() -> None:
@@ -80,14 +78,14 @@ def main() -> None:
     top_working_dir = exp_settings['common']['top_working_dir']
     for sdate in sdates_list:
         # 2 - create a task group for each ESM member and launch all of them in parallel
-        with TaskGroup(str(exp_id) + "_" + sdate, False):
-            # 3 - Launch each SIM, create a implicit dependence by passing the result to the next task (checkpoint)
+        with TaskGroup(exp_id + "_" + sdate, False):
+            # 3 - Launch each SIM, create an implicit dependence by passing the result to the next task (checkpoint)
             n_sims = int(exp_settings['common']['chunks'])
             print("We have " + str(n_sims) + " chunks ")
             to_continue = True
             for sim in range(1, n_sims + 1):
-                working_dir_exe = top_working_dir + "/" + sdate
-                log = working_dir_exe + "/" + "fesom2_" + str(exp_id) + "_" + str(sdate) + "_" + str(sim) + ".out"
+                working_dir_exe = top_working_dir + "/" + exp_id + "/" + sdate
+                log = working_dir_exe + "/" + "fesom2_" + exp_id + "_" + sdate + "_" + str(sim) + ".out"
                 print("################## launching simulation " + sdate + "." + str(
                     sim) + " in " + working_dir_exe + "######################")
                 res = esm_simulation(log, working_dir_exe, to_continue)
