@@ -1,15 +1,14 @@
 import sys
 
-
-# COMPSs/PyCOMPSs imports
-from pycompss.api.api import compss_wait_on
 from pycompss.api.api import TaskGroup
 from pycompss.api.api import compss_barrier_group
 from pycompss.api.api import compss_cancel_group
-from pycompss.api.parameter import *
-from pycompss.api.on_failure import on_failure
+# COMPSs/PyCOMPSs imports
+from pycompss.api.api import compss_wait_on
 from pycompss.api.exceptions import COMPSsException
 from pycompss.api.mpmd_mpi import mpmd_mpi
+from pycompss.api.on_failure import on_failure
+from pycompss.api.parameter import *
 
 # project imports
 from esm_ensemble_init import *
@@ -38,7 +37,8 @@ def esm_coupled_simulation(log_file, working_dir_exe, to_continue):
 
 
 @on_failure(management='IGNORE')
-@task(returns=bool)  # Jorge: Prefix is only needed in @mpi or @binary to avoid to pass the parameter to the binary execution, res={Type:IN, Prefix:"#"})
+@task(
+    returns=bool)  # Jorge: Prefix is only needed in @mpi or @binary to avoid to pass the parameter to the binary execution, res={Type:IN, Prefix:"#"})
 def esm_member_checkpoint(exp_id, sdate, res):
     # retrieve from Hecuba the last status of the ensemble members produced by the analysis (running in parallel)
     print("Checking status member - " + sdate)
@@ -158,4 +158,3 @@ if __name__ == "__main__":
             # clean generated data
             esm_member_disposal(exp_id, sdate, top_working_dir)
             pass
-
