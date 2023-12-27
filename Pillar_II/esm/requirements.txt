@@ -1,0 +1,2 @@
+pycompss==3.3
+hecuba==2.1.2

@@ -1,34 +1,18 @@
-from os.path import join
 import sys
-import os
-import random
-import shutil
-
-try:
-    import configparser
-except ImportError:
-    # Python 2.x fallback
-    import ConfigParser as configparser
-from time import time
 
 # COMPSs/PyCOMPSs imports
-from pycompss.api.task import task
-from pycompss.api.binary import binary
-from pycompss.api.constraint import constraint
 from pycompss.api.mpi import mpi
 from pycompss.api.api import compss_wait_on
-from pycompss.api.api import compss_barrier
 from pycompss.api.api import TaskGroup
 from pycompss.api.api import compss_barrier_group
 from pycompss.api.api import compss_cancel_group
-from pycompss.api.parameter import *
+from pycompss.api.parameter import Type, FILE_OUT, StdIOStream, STDOUT, INOUT, Prefix
 from pycompss.api.on_failure import on_failure
 from pycompss.api.exceptions import COMPSsException
 
 # project imports
 from esm_ensemble_init import *
-from hecuba import StorageObj
-from hecuba_lib.esm_dynamic_analysis_results import *
+from hecuba_lib.esm_dynamic_analysis_results import esm_dynamic_analysis_results
 
 
 ### to_continue in IN mode may be the problem since it behaves as inmutable (not sure...check COMPSs documentation)
