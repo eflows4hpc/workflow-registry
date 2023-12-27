@@ -1,18 +1,13 @@
 import os
 import shutil
-import sys
-from contextlib import suppress
 from typing import Any
 
 from pycompss.api.api import TaskGroup  # type: ignore
 from pycompss.api.api import compss_barrier_group
 from pycompss.api.api import compss_cancel_group
-from pycompss.api.api import compss_wait_on
-from pycompss.api.exceptions import COMPSsException  # type: ignore
 from pycompss.api.mpi import mpi  # type: ignore
 from pycompss.api.on_failure import on_failure  # type: ignore
 from pycompss.api.parameter import IN, Type, FILE_OUT, StdIOStream, STDOUT, INOUT, Prefix  # type: ignore
-from pycompss.api.task import task  # type: ignore
 
 # project imports
 from esm_ensemble_init import esm_ensemble_init  # type: ignore
@@ -52,25 +47,10 @@ def esm_member_disposal(exp_id: str, sdate: str, top_working_dir: str) -> bool:
     return True
 
 
-# dummy method to test data exchange with Hecuba
-@task(returns=bool)
-def esm_dynamic_analysis(exp_id: str) -> None:
-    with suppress(COMPSsException):
-        print("######################## performing dynamic analysis for experiment " + exp_id + "###################")
-        # TODO: here is the launching point of the analysis, it will be a PyCOMPSs task
-        ds = esm_dynamic_analysis_results()
-        ds.results["1948"] = False
-        ds.results["1958"] = True
-        ds.results["1968"] = False
-        ds.make_persistent(exp_id + "_esm_dynamic_analysis")
+
 
 
 def main() -> None:
-    print("Running FESOM2 - Pycompss")
-    exp_id = str(sys.argv[1])
-
-    esm_dynamic_analysis(exp_id)
-
     exp_settings = compss_wait_on(esm_ensemble_init(exp_id))
     print("##################################### Initialization completed ####################################")
 
