@@ -2,20 +2,21 @@ import configparser
 import os
 import random
 import shutil
+from typing import Dict
 
-from pycompss.api.parameter import IN
+from pycompss.api.parameter import IN  # type: ignore
 # COMPSs/PyCOMPSs imports
-from pycompss.api.task import task
+from pycompss.api.task import task  # type: ignore
 
 
-def esm_ensemble_setup_config(config_file_data, value_dict):
+def esm_ensemble_setup_config(config_file_data: str, value_dict: Dict[str, str]) -> str:
     for key, value in value_dict.items():
         config_file_data = config_file_data.replace(key, value)
 
     return config_file_data
 
 
-def esm_ensemble_process_namelist(namelist_template, outpath, namelist_value_dict):
+def esm_ensemble_process_namelist(namelist_template: str, outpath: str, namelist_value_dict: Dict[str, str]) -> None:
     # config namelists
     fin = open(os.path.join(os.path.dirname(__file__), 'config/awicm3', namelist_template + '.tmpl'), "rt")
     # read file contents to string
@@ -28,7 +29,8 @@ def esm_ensemble_process_namelist(namelist_template, outpath, namelist_value_dic
     file.close()
 
 
-def esm_ensemble_generate_namelists(exp_id, outpath, start_year, esm_config):
+def esm_ensemble_generate_namelists(exp_id: str, outpath: str, start_year: str,
+                                    esm_config: configparser.ConfigParser) -> None:
     try:
         # namelist.config
         mapdict = {'{START_YEAR}': start_year, '{MESH_PATH}': esm_config['fesom2']['mesh_file_path'],
@@ -73,15 +75,8 @@ def esm_ensemble_generate_namelists(exp_id, outpath, start_year, esm_config):
         print("Config files Placeholder processing failed :" + exc.strerror)
 
 
-def esm_ensemble_update_namelists(exp_id, outpath, start_year, esm_config):
-    try:
-        print("Updating confs for chunk x")
-    except OSError as exc:  # Python ≥ 2.5
-        print("Config files Placeholder processing failed :" + exc.strerror)
-
-
 @task(exp_id=IN)
-def esm_ensemble_init(exp_id, setup_working_env=True):
+def esm_ensemble_init(exp_id: str, setup_working_env: bool = True):
     # 1 - load ensemble config file
     print("Initialization for experiment " + str(exp_id))
     config = configparser.ConfigParser()

@@ -1,17 +1,21 @@
+import os
+import shutil
 import sys
+from typing import Any
 
-from pycompss.api.api import TaskGroup
+from pycompss.api.api import TaskGroup  # type: ignore
 from pycompss.api.api import compss_barrier_group
 from pycompss.api.api import compss_cancel_group
 from pycompss.api.api import compss_wait_on
-from pycompss.api.exceptions import COMPSsException
+from pycompss.api.exceptions import COMPSsException  # type: ignore
 # COMPSs/PyCOMPSs imports
-from pycompss.api.mpi import mpi
-from pycompss.api.on_failure import on_failure
-from pycompss.api.parameter import Type, FILE_OUT, StdIOStream, STDOUT, INOUT, Prefix
+from pycompss.api.mpi import mpi  # type: ignore
+from pycompss.api.on_failure import on_failure  # type: ignore
+from pycompss.api.parameter import IN, Type, FILE_OUT, StdIOStream, STDOUT, INOUT, Prefix  # type: ignore
+from pycompss.api.task import task  # type: ignore
 
 # project imports
-from esm_ensemble_init import *
+from esm_ensemble_init import esm_ensemble_init  # type: ignore
 from hecuba_lib.esm_dynamic_analysis_results import esm_dynamic_analysis_results
 
 
@@ -21,14 +25,14 @@ from hecuba_lib.esm_dynamic_analysis_results import esm_dynamic_analysis_results
      fail_by_exit_value=True, processes_per_node=48)
 @task(log_file={Type: FILE_OUT, StdIOStream: STDOUT}, working_dir_exe={Type: INOUT, Prefix: "#"},
       to_continue={Type: IN, Prefix: "#"}, returns=int)
-def esm_simulation(log_file, working_dir_exe, to_continue):
-    pass
+def esm_simulation(log_file: str, working_dir_exe: str, to_continue: bool) -> Any:
+    return None
 
 
 @on_failure(management='IGNORE')
-@task(
-    returns=bool)  # Jorge: Prefix is only needed in @mpi or @binary to avoid to pass the parameter to the binary execution, res={Type:IN, Prefix:"#"})
-def esm_member_checkpoint(exp_id, sdate, res):
+# Jorge: Prefix is only needed in @mpi or @binary to avoid to pass the parameter to the binary execution, res={Type:IN, Prefix:"#"})
+@task(returns=bool)
+def esm_member_checkpoint(exp_id: str, sdate: str, res) -> bool:
     # retrieve from Hecuba the last status of the ensemble members produced by the analysis (running in parallel)
     print("Checking status member - " + sdate)
     print("%%%%%%%%%%%%%%%%%% res val is " + str(res))
@@ -43,7 +47,7 @@ def esm_member_checkpoint(exp_id, sdate, res):
 
 @on_failure(management='IGNORE')
 @task(returns=bool)
-def esm_member_disposal(exp_id, sdate, top_working_dir):
+def esm_member_disposal(exp_id: str, sdate: str, top_working_dir: str) -> bool:
     # TODO: remove hecuba data aswell of the concerned aborted member
     path = os.path.join("/gpfs/projects/dese28/eflows4hpc/rohan/output/", sdate)
     shutil.rmtree(path)
@@ -52,9 +56,8 @@ def esm_member_disposal(exp_id, sdate, top_working_dir):
 
 # dummy method to test data exchange with Hecuba
 @task(returns=bool)
-def esm_dynamic_analysis(exp_id):
+def esm_dynamic_analysis(exp_id: str) -> None:
     try:
-
         print("######################## performing dynamic analysis for experiment " + exp_id + "###################")
         # TODO: here is the launching point of the analysis, it will be a PyCOMPSs task
         ds = esm_dynamic_analysis_results()
@@ -66,7 +69,7 @@ def esm_dynamic_analysis(exp_id):
         pass
 
 
-if __name__ == "__main__":
+def main() -> None:
     print("Running FESOM2 - Pycompss")
     exp_id = str(sys.argv[1])
 
@@ -77,7 +80,6 @@ if __name__ == "__main__":
 
     sdates_list = (exp_settings['common']['ensemble_start_dates']).split()
     top_working_dir = exp_settings['common']['top_working_dir']
-    to_continue = True
     for sdate in sdates_list:
         # 2 - create a task group for each ESM member and launch all of them in parallel
         with TaskGroup(str(exp_id) + "_" + sdate, False):
@@ -103,11 +105,15 @@ if __name__ == "__main__":
 
     for sdate in sdates_list:
         try:
-            compss_barrier_group(str(exp_id) + "_" + sdate)
+            compss_barrier_group(exp_id + "_" + sdate)
         except COMPSsException:
             # React to the exception (maybe calling other tasks or with other parameters)
             print("ABORTING MEMBER " + sdate)
             # we cancel the whole group
-            compss_cancel_group(str(exp_id) + "_" + sdate)
+            compss_cancel_group(exp_id + "_" + sdate)
             # clean generated data
             esm_member_disposal(exp_id, sdate, top_working_dir)
+
+
+if __name__ == "__main__":
+    main()
