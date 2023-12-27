@@ -7,7 +7,6 @@ from typing import Any
 from pycompss.api.api import TaskGroup  # type: ignore
 from pycompss.api.api import compss_barrier_group
 from pycompss.api.api import compss_cancel_group
-# COMPSs/PyCOMPSs imports
 from pycompss.api.api import compss_wait_on
 from pycompss.api.exceptions import COMPSsException  # type: ignore
 from pycompss.api.mpmd_mpi import mpmd_mpi  # type: ignore
@@ -17,7 +16,7 @@ from pycompss.api.task import task  # type: ignore
 
 # project imports
 from esm_ensemble_init import esm_ensemble_init  # type: ignore
-from hecuba_lib.esm_dynamic_analysis_results import esm_dynamic_analysis_results  # type: ignore
+from hecuba_lib.esm_dynamic_analysis_results import esm_dynamic_analysis_results
 
 
 @on_failure(management='IGNORE')
@@ -36,7 +35,7 @@ def esm_coupled_simulation(log_file: str, working_dir_exe: str, to_continue: boo
 @on_failure(management='IGNORE')
 # Jorge: Prefix is only needed in @mpi or @binary to avoid to pass the parameter to the binary execution, res={Type:IN, Prefix:"#"})
 @task(returns=bool)
-def esm_member_checkpoint(exp_id, sdate, res) -> bool:
+def esm_member_checkpoint(exp_id: str, sdate: str, res: Any) -> bool:
     # retrieve from Hecuba the last status of the ensemble members produced by the analysis (running in parallel)
     print("Checking status member - " + sdate)
     print("%%%%%%%%%%%%%%%%%% res val is " + str(res))
@@ -44,9 +43,8 @@ def esm_member_checkpoint(exp_id, sdate, res) -> bool:
     print("%%%%%%%%%%%%%%%%%% status for member " + sdate + " is " + str(ensemble_status))
     to_continue = bool(ensemble_status.results[sdate])
     if not to_continue:
-        raise COMPSsException("Member diverged - Aborting member " + str(sdate))
-    else:
-        return to_continue
+        raise COMPSsException("Member diverged - Aborting member " + sdate)
+    return to_continue
 
 
 @on_failure(management='IGNORE')
@@ -63,7 +61,6 @@ def esm_member_disposal(exp_id: str, sdate: str, top_working_dir: str) -> bool:
 def esm_dynamic_analysis(exp_id: str) -> None:
     with suppress(COMPSsException):
         print("######################## performing dynamic analysis for experiment " + exp_id + "###################")
-        # create a dummy object
         # TODO: here is the launching point of the analysis, it will be a PyCOMPSs task
         ds = esm_dynamic_analysis_results()
         ds.results["2000"] = True
@@ -81,22 +78,20 @@ def main() -> None:
     exp_settings = compss_wait_on(esm_ensemble_init(exp_id))
     print("##################################### Initialization completed ####################################")
 
-    ##################################### working code #########################################
     sdates_list = (exp_settings['common']['ensemble_start_dates']).split()
     top_working_dir = exp_settings['common']['top_working_dir']
     for sdate in sdates_list:
         # Create a task group for each ESM member and launch all of them in parallel
-        with TaskGroup(str(exp_id) + "_" + sdate, False):
+        with TaskGroup(exp_id + "_" + sdate, False):
             # 3 - Launch each SIM, create an implicit dependence by passing the result to the next task (checkpoint)
             n_sims = int(exp_settings['common']['chunks'])
             print("We have " + str(n_sims) + " chunks ")
             to_continue = True
             for sim in range(1, n_sims + 1):
-                working_dir_exe = top_working_dir + "/" + str(exp_id) + "/" + str(sdate)
-                log = working_dir_exe + "/" + "awicm3_" + str(exp_id) + "_" + str(sdate) + "_" + str(sim) + ".out"
+                working_dir_exe = top_working_dir + "/" + exp_id + "/" + sdate
+                log = working_dir_exe + "/" + "awicm3_" + exp_id + "_" + sdate + "_" + str(sim) + ".out"
                 print("################## launching simulation " + sdate + "." + str(
                     sim) + " in " + working_dir_exe + "######################")
-                # res = esm_simulation(log, working_dir_exe, to_continue)
                 res = esm_coupled_simulation(log, working_dir_exe, to_continue)
                 # check the state of the member, for the first one there is nothing to check
                 if sim > 1:
@@ -110,12 +105,12 @@ def main() -> None:
 
     for sdate in sdates_list:
         try:
-            compss_barrier_group(str(exp_id) + "_" + sdate)
+            compss_barrier_group(exp_id + "_" + sdate)
         except COMPSsException:
             # React to the exception (maybe calling other tasks or with other parameters)
             print("ABORTING MEMBER " + sdate)
             # we cancel the whole group
-            compss_cancel_group(str(exp_id) + "_" + sdate)
+            compss_cancel_group(exp_id + "_" + sdate)
             # clean generated data
             esm_member_disposal(exp_id, sdate, top_working_dir)
 
