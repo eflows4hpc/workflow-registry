@@ -1,4 +1,4 @@
-from hecuba import StorageDict
+from hecuba import StorageDict  # type: ignore
 
 
 class fesom_outputs(StorageDict):

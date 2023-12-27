@@ -1,18 +1,22 @@
+import os
+import shutil
 import sys
+from typing import Any
 
-from pycompss.api.api import TaskGroup
+from pycompss.api.api import TaskGroup  # type: ignore
 from pycompss.api.api import compss_barrier_group
 from pycompss.api.api import compss_cancel_group
 # COMPSs/PyCOMPSs imports
 from pycompss.api.api import compss_wait_on
-from pycompss.api.exceptions import COMPSsException
-from pycompss.api.mpmd_mpi import mpmd_mpi
-from pycompss.api.on_failure import on_failure
-from pycompss.api.parameter import *
+from pycompss.api.exceptions import COMPSsException  # type: ignore
+from pycompss.api.mpmd_mpi import mpmd_mpi  # type: ignore
+from pycompss.api.on_failure import on_failure  # type: ignore
+from pycompss.api.parameter import IN, Type, FILE_OUT, StdIOStream, STDOUT, INOUT, Prefix  # type: ignore
+from pycompss.api.task import task  # type: ignore
 
 # project imports
-from esm_ensemble_init import *
-from hecuba_lib.esm_dynamic_analysis_results import esm_dynamic_analysis_results
+from esm_ensemble_init import esm_ensemble_init  # type: ignore
+from hecuba_lib.esm_dynamic_analysis_results import esm_dynamic_analysis_results  # type: ignore
 
 
 @on_failure(management='IGNORE')
@@ -24,14 +28,14 @@ from hecuba_lib.esm_dynamic_analysis_results import esm_dynamic_analysis_results
           ])
 @task(log_file={Type: FILE_OUT, StdIOStream: STDOUT}, working_dir_exe={Type: INOUT, Prefix: "#"},
       to_continue={Type: IN, Prefix: "#"}, returns=int)
-def esm_coupled_simulation(log_file, working_dir_exe, to_continue):
-    pass
+def esm_coupled_simulation(log_file: str, working_dir_exe: str, to_continue: bool) -> Any:
+    return None
 
 
 @on_failure(management='IGNORE')
-@task(
-    returns=bool)  # Jorge: Prefix is only needed in @mpi or @binary to avoid to pass the parameter to the binary execution, res={Type:IN, Prefix:"#"})
-def esm_member_checkpoint(exp_id, sdate, res):
+# Jorge: Prefix is only needed in @mpi or @binary to avoid to pass the parameter to the binary execution, res={Type:IN, Prefix:"#"})
+@task(returns=bool)
+def esm_member_checkpoint(exp_id, sdate, res) -> bool:
     # retrieve from Hecuba the last status of the ensemble members produced by the analysis (running in parallel)
     print("Checking status member - " + sdate)
     print("%%%%%%%%%%%%%%%%%% res val is " + str(res))
@@ -46,7 +50,7 @@ def esm_member_checkpoint(exp_id, sdate, res):
 
 @on_failure(management='IGNORE')
 @task(returns=bool)
-def esm_member_disposal(exp_id, sdate, top_working_dir):
+def esm_member_disposal(exp_id: str, sdate: str, top_working_dir: str) -> bool:
     # TODO: remove hecuba data aswell of the concerned aborted member
     path = os.path.join("/home/bsc32/bsc32044/results/output_core2/", sdate)
     shutil.rmtree(path)
@@ -55,9 +59,8 @@ def esm_member_disposal(exp_id, sdate, top_working_dir):
 
 # dummy method to test data exchange with Hecuba
 @task(returns=bool)
-def esm_dynamic_analysis(exp_id):
+def esm_dynamic_analysis(exp_id: str) -> None:
     try:
-
         print("######################## performing dynamic analysis for experiment " + exp_id + "###################")
         # create a dummy object
         # TODO: here is the launching point of the analysis, it will be a PyCOMPSs task
@@ -65,14 +68,12 @@ def esm_dynamic_analysis(exp_id):
         ds.results["2000"] = True
         # ds.results["1958"] = False
         # ds.results["1968"] = False
-        ds.make_persistent(str(exp_id) + "_esm_dynamic_analysis")
-
-
+        ds.make_persistent(exp_id + "_esm_dynamic_analysis")
     except COMPSsException:
         pass
 
 
-if __name__ == "__main__":
+def main() -> None:
     print("Running awicm3 coupled - Pycompss")
     exp_id = str(sys.argv[1])
 
@@ -84,10 +85,8 @@ if __name__ == "__main__":
     ##################################### working code #########################################
     sdates_list = (exp_settings['common']['ensemble_start_dates']).split()
     top_working_dir = exp_settings['common']['top_working_dir']
-    to_continue = True
     for sdate in sdates_list:
         # Create a task group for each ESM member and launch all of them in parallel
-
         with TaskGroup(str(exp_id) + "_" + sdate, False):
             # 3 - Launch each SIM, create an implicit dependence by passing the result to the next task (checkpoint)
             n_sims = int(exp_settings['common']['chunks'])
@@ -120,3 +119,7 @@ if __name__ == "__main__":
             compss_cancel_group(str(exp_id) + "_" + sdate)
             # clean generated data
             esm_member_disposal(exp_id, sdate, top_working_dir)
+
+
+if __name__ == "__main__":
+    main()
