@@ -1,25 +1,12 @@
-from os.path import join
-import sys
 import os
 import random
 import shutil
 
-try:
-    import configparser
-except ImportError:
-    # Python 2.x fallback
-    import ConfigParser as configparser
+import configparser
 
 # COMPSs/PyCOMPSs imports
 from pycompss.api.task import task
-from pycompss.api.binary import binary
-from pycompss.api.constraint import constraint
-from pycompss.api.mpi import mpi
-from pycompss.api.api import compss_wait_on
-from pycompss.api.api import compss_barrier
-from pycompss.api.api import TaskGroup
-from pycompss.api.api import compss_barrier_group
-from pycompss.api.parameter import *
+from pycompss.api.parameter import IN
 
 
 def esm_ensemble_setup_config(config_file_data, value_dict):
