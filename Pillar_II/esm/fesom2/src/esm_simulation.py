@@ -1,6 +1,7 @@
 import os
 import shutil
 import sys
+from contextlib import suppress
 from typing import Any
 
 from pycompss.api.api import TaskGroup  # type: ignore
@@ -41,8 +42,7 @@ def esm_member_checkpoint(exp_id: str, sdate: str, res) -> bool:
     to_continue = bool(ensemble_status.results[sdate])
     if not to_continue:
         raise COMPSsException("Member diverged - Aborting member " + str(sdate))
-    else:
-        return to_continue
+    return to_continue
 
 
 @on_failure(management='IGNORE')
@@ -57,7 +57,7 @@ def esm_member_disposal(exp_id: str, sdate: str, top_working_dir: str) -> bool:
 # dummy method to test data exchange with Hecuba
 @task(returns=bool)
 def esm_dynamic_analysis(exp_id: str) -> None:
-    try:
+    with suppress(COMPSsException):
         print("######################## performing dynamic analysis for experiment " + exp_id + "###################")
         # TODO: here is the launching point of the analysis, it will be a PyCOMPSs task
         ds = esm_dynamic_analysis_results()
@@ -65,8 +65,6 @@ def esm_dynamic_analysis(exp_id: str) -> None:
         ds.results["1958"] = True
         ds.results["1968"] = False
         ds.make_persistent(str(exp_id) + "_esm_dynamic_analysis")
-    except COMPSsException:
-        pass
 
 
 def main() -> None:
@@ -75,7 +73,7 @@ def main() -> None:
 
     esm_dynamic_analysis(exp_id)
 
-    exp_settings = compss_wait_on(esm_ensemble_init(exp_id, True))
+    exp_settings = compss_wait_on(esm_ensemble_init(exp_id))
     print("##################################### Initialization completed ####################################")
 
     sdates_list = (exp_settings['common']['ensemble_start_dates']).split()
