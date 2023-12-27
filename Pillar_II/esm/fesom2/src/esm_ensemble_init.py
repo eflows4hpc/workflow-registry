@@ -73,29 +73,22 @@ def esm_ensemble_update_namelists(exp_id, outpath, start_year, esm_config):
 
 @task(exp_id=IN)
 def esm_ensemble_init(exp_id, setup_working_env=True):
-    # 1 - load ensemble config file
     print("Initialization for experiment " + str(exp_id))
     config = configparser.ConfigParser()
     config.read(os.path.join(os.path.dirname(__file__), 'config', 'esm_ensemble.conf'))
-    # 2 - create folders for the topdir and each ensemble member runtime folder
     if setup_working_env:
-        # 1 - load ensemble config file
         print("Initialization for experiment " + str(exp_id))
         if config.has_option('common', 'top_working_dir'):
             top_dir = config['common']['top_working_dir'] + "/" + str(exp_id)
             output_dir = top_dir
-            # define the access rights - readable and accessible by all users, and write access by only the owner
             access_rights = 0o755
             try:
-                # top dir
                 if not os.path.exists(top_dir):
                     os.makedirs(top_dir, access_rights)
 
-                # output dir
                 if not os.path.exists(output_dir):
                     os.makedirs(output_dir, access_rights)
 
-                # get list of members
                 sdates_list = (config['common']['ensemble_start_dates']).split()
                 print("Creating directories for the following list of dates: " + str(sdates_list))
                 for sdate in sdates_list:

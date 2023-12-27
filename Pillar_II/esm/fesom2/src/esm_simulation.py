@@ -45,9 +45,7 @@ def esm_member_checkpoint(exp_id, sdate, res):
 @task(returns=bool)
 def esm_member_disposal(exp_id, sdate, top_working_dir):
     # TODO: remove hecuba data aswell of the concerned aborted member
-    # path
     path = os.path.join("/gpfs/projects/dese28/eflows4hpc/rohan/output/", sdate)
-    # removing directory
     shutil.rmtree(path)
     return True
 
@@ -55,45 +53,27 @@ def esm_member_disposal(exp_id, sdate, top_working_dir):
 # dummy method to test data exchange with Hecuba
 @task(returns=bool)
 def esm_dynamic_analysis(exp_id):
-    # while True:
-
     try:
 
         print("######################## performing dynamic analysis for experiment " + exp_id + "###################")
-        # create a dummy object
         # TODO: here is the launching point of the analysis, it will be a PyCOMPSs task
         ds = esm_dynamic_analysis_results()
         ds.results["1948"] = False
         ds.results["1958"] = True
         ds.results["1968"] = False
         ds.make_persistent(str(exp_id) + "_esm_dynamic_analysis")
-
-
     except COMPSsException:
         pass
 
 
-# time.sleep(120)
-
-
 if __name__ == "__main__":
     print("Running FESOM2 - Pycompss")
-    # 0 - create a ramdon nr for the experiment id
     exp_id = str(sys.argv[1])
 
-    # create dummy data in Hecuba
     esm_dynamic_analysis(exp_id)
 
-    # prepare folder structure/configuration
     exp_settings = compss_wait_on(esm_ensemble_init(exp_id, True))
-    # exp_settings =  compss_wait_on(exp_settings)
     print("##################################### Initialization completed ####################################")
-    # run the experiment
-    ### for sdate in sdates:
-    ###     with Task_group(exp_id+"."+sdate, false):
-    ###         for time_step in time_steps:
-    ###             res= esm_task(...., working_dir)
-    ###             esm_checkpoint(..., res)
 
     sdates_list = (exp_settings['common']['ensemble_start_dates']).split()
     top_working_dir = exp_settings['common']['top_working_dir']
@@ -121,12 +101,6 @@ if __name__ == "__main__":
                 else:
                     to_continue = res
 
-    ### for sdate in sdates:
-    ###     try:
-    ###         compss_barrier_group(exp_id+"."+sdate)
-    ###     except COMPSException:
-    ###         clean_up(exp_id+"."+sdate)
-
     for sdate in sdates_list:
         try:
             compss_barrier_group(str(exp_id) + "_" + sdate)
@@ -137,4 +111,3 @@ if __name__ == "__main__":
             compss_cancel_group(str(exp_id) + "_" + sdate)
             # clean generated data
             esm_member_disposal(exp_id, sdate, top_working_dir)
-            pass
