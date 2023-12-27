@@ -139,16 +139,7 @@ def esm_ensemble_init(exp_id, setup_working_env=True):
 
                     # generate the config files for each year/member
                     esm_ensemble_generate_namelists(exp_id, member_working_dir, sdate, config)
-                    # create symlink for FESOM2 executable for each working dir
                     print("############ creating clock file  ################")
-                    # fesom_exe = config['fesom2']['fesom_binary_path']
-                    # link_name = member_working_dir + "/fesom.x"
-                    # print(link_name)
-                    # refresh link
-                    # if os.path.isfile(link_name):
-                    #   os.remove(link_name)
-                    # os.symlink(fesom_exe, link_name)
-                    # copy datamodel files to the working dir
                     source_directory_datamodels = config['fesom2']['fesom_hecuba_datamodel']
                     for source_filename in os.listdir(source_directory_datamodels):
                         if source_filename.endswith(".yaml"):
@@ -160,7 +151,6 @@ def esm_ensemble_init(exp_id, setup_working_env=True):
                 raise
         else:
             print("ERROR - topdir undefined path not found")
-            # return the global config settings
     return config
 
 

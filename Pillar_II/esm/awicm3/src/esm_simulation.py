@@ -15,14 +15,6 @@ from esm_ensemble_init import *
 from hecuba_lib.esm_dynamic_analysis_results import esm_dynamic_analysis_results
 
 
-### to_continue in IN mode may be the problem since it behaves as inmutable (not sure...check COMPSs documentation)
-# @on_failure(management='IGNORE')
-# @mpi(binary="${FESOM_EXE}", runner="mpirun", processes="${FESOM_CORES}", working_dir="{{working_dir_exe}}", fail_by_exit_value=True, processes_per_node=48)
-# @task(log_file={Type:FILE_OUT, StdIOStream:STDOUT}, working_dir_exe={Type:INOUT, Prefix:"#"}, to_continue={Type:IN, Prefix:"#"}, returns=int)
-# def esm_simulation(log_file, working_dir_exe, to_continue):
-#   pass
-
-# original values was mpirun
 @on_failure(management='IGNORE')
 @mpmd_mpi(runner="srun", working_dir="{{working_dir_exe}}", fail_by_exit_value=True,
           programs=[
@@ -56,9 +48,7 @@ def esm_member_checkpoint(exp_id, sdate, res):
 @task(returns=bool)
 def esm_member_disposal(exp_id, sdate, top_working_dir):
     # TODO: remove hecuba data aswell of the concerned aborted member
-    # path
     path = os.path.join("/home/bsc32/bsc32044/results/output_core2/", sdate)
-    # removing directory
     shutil.rmtree(path)
     return True
 
@@ -66,8 +56,6 @@ def esm_member_disposal(exp_id, sdate, top_working_dir):
 # dummy method to test data exchange with Hecuba
 @task(returns=bool)
 def esm_dynamic_analysis(exp_id):
-    # while True:
-
     try:
 
         print("######################## performing dynamic analysis for experiment " + exp_id + "###################")
@@ -83,44 +71,25 @@ def esm_dynamic_analysis(exp_id):
     except COMPSsException:
         pass
 
-    # time.sleep(120)
-
 
 if __name__ == "__main__":
     print("Running awicm3 coupled - Pycompss")
-    # 0 - create a ramdon nr for the experiment id
     exp_id = str(sys.argv[1])
 
-    # create dummy data in Hecuba
     esm_dynamic_analysis(exp_id)
 
-    # prepare folder structure/configuration
     exp_settings = compss_wait_on(esm_ensemble_init(exp_id, True))
-    # exp_settings =  compss_wait_on(exp_settings)
     print("##################################### Initialization completed ####################################")
 
-    # sys.exit(0)
-
-    # run the experiment
-    ### for sdate in sdates:
-    ###     with Task_group(exp_id+"."+sdate, false):
-    ###         for time_step in time_steps:
-    ###             res= esm_task(...., working_dir)
-    ###             esm_checkpoint(..., res)
     ##################################### working code #########################################
     sdates_list = (exp_settings['common']['ensemble_start_dates']).split()
     top_working_dir = exp_settings['common']['top_working_dir']
     to_continue = True
     for sdate in sdates_list:
-        # 2 - create a task group for each ESM member and launch all of them in parallel
-        ##   working_dir_exe = top_working_dir + "/" + str(exp_id)
-        ##   log = working_dir_exe + "/" + "awicm3_2000_1.out"
-        ##   res = esm_coupled_simulation(log, working_dir_exe, to_continue)
-        ##   print( "################## result " + str(res) + " in " + working_dir_exe + "######################")
-        ##############################################################################################
+        # Create a task group for each ESM member and launch all of them in parallel
 
         with TaskGroup(str(exp_id) + "_" + sdate, False):
-            # 3 - Launch each SIM, create a implicit dependence by passing the result to the next task (checkpoint)
+            # 3 - Launch each SIM, create an implicit dependence by passing the result to the next task (checkpoint)
             n_sims = int(exp_settings['common']['chunks'])
             print("We have " + str(n_sims) + " chunks ")
             to_continue = True
@@ -141,12 +110,6 @@ if __name__ == "__main__":
                 else:
                     to_continue = res
 
-    ### for sdate in sdates:
-    ###     try:
-    ###         compss_barrier_group(exp_id+"."+sdate)
-    ###     except COMPSException:
-    ###         clean_up(exp_id+"."+sdate)
-
     for sdate in sdates_list:
         try:
             compss_barrier_group(str(exp_id) + "_" + sdate)
@@ -157,4 +120,3 @@ if __name__ == "__main__":
             compss_cancel_group(str(exp_id) + "_" + sdate)
             # clean generated data
             esm_member_disposal(exp_id, sdate, top_working_dir)
-            pass
