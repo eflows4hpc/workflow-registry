@@ -1,3 +1,5 @@
+# eFlows4HPC ESM workflow
+
 This is the documentation for the eFlows4HPC ESM Workflow:
 https://github.com/eflows4hpc/workflow-registry/tree/main/Pillar_II/esm
 
@@ -45,29 +47,46 @@ $ mypy src
 
 To run the FESOM2 ESM simulation, you need to:
 
-1. Modify `src/config/esm_ensemble.conf`,
+1. Modify `src/fesom2/esm_ensemble.conf`,
    changing the `top_working_dir` and `output_dir` to a valid
    location for your user.
-2. Modify `src/esm_simulation.py`
-   changing the output dir (`path`) to a valid location for
-   your user.
+2. Modify the FESOM2 settings in the same file.
+3. Either modify the start dates in the same file, or pass it
+   via command-line arguments.
 
-Then you can use the `src/launch_mn4.sh` to launch the simulation.
-It takes three parameters, for example:
+Then you can use the `src/launch_fesom2.sh` to launch the simulation.
+For example:
 
 ```bash
-#               cores queue n/ensembles
-./launch_mn4.sh 288 debug 2
+$ ./launch_fesom2.sh \
+        --hpc mn4 \
+        --qos debug \
+        --start_dates "1990 2000" \
+        --cores_per_node 48 \
+        --cores 48
 ```
 
 The simulation Python script randomly creates an `expid` with
-`8` digits (e.g. `12345678`).
+`8` digits (e.g. `12345678`). But you can also pass a fixed `expid`
+if you prefer.
 
 The output of the shell execution will contain a Slurm Job ID.
 You can check the COMPSs directory with the `expid` name. And
 you can also find useful information in a folder created under
 your user home directory, e.g. `~/.COMPSs/12345678/jobs/`.
 In this directory you will find the outputs of your Job execution.
+
+If you prefer, you can skip the Shell script and use the Python
+script directly, without PyCOMPSs. This is useful for testing:
+
+```bash
+$ python esm_simulation.py \
+        --expid 123456 \
+        --model fesom2 \
+        --config ~/esm_ensemble.conf \
+        --start_dates="1990 1991 1992" \
+        --debug
+```
 
 #### Inspecting the Cassandra snapshots
 
@@ -87,16 +106,23 @@ data and validate that your simulation output was written correctly.
 #### Running from Alien4Cloud
 
 There is an environment initialization script:
-/gpfs/projects/dese28/eflows4hpc/esm/fesom2/env.sh
+`/gpfs/projects/dese28/eflows4hpc/esm/fesom2/env.sh`
 
-This does the same initializations as in launch_mn4.sh but also specifies cores, queue type and n/ensembles.
+This does the same initializations as in `launch_fesom2.sh`
+but also specifies cores, queue type and n/ensembles.
 
-Then in the A4C topology, in the extra_compss_opts=
-
-we specify the --env_script:
+Then in the A4C topology, in the `extra_compss_opts=`
+we specify the `--env_script`:
 
 ```bash
---qos=debug --exec_time=120 --keep_workingdir --worker_working_dir=/gpfs/projects/dese28/eflows4hpc/esm/fesom2/src --worker_in_master_cpus=48 --num_nodes=3 --pythonpath=/gpfs/projects/dese28/eflows4hpc/esm/fesom2/src:/apps/HECUBA/2.1_intel/compss --env_script=/gpfs/projects/dese28/eflows4hpc/esm/fesom2/env.sh --storage_props=/gpfs/projects/dese28/eflows4hpc/esm/fesom2/src/hecuba_lib/storage_props.cfg --storage_home=/apps/HECUBA/2.1_intel/compss
+$ compss... \
+        --qos=debug \
+        --exec_time=120 \
+        --keep_workingdir \
+        --worker_working_dir=/gpfs/projects/dese28/eflows4hpc/esm/fesom2/src \
+        --worker_in_master_cpus=48 \
+        --num_nodes=3 \
+        --pythonpath=/gpfs/projects/dese28/eflows4hpc/esm/fesom2/src:/apps/HECUBA/2.1_intel/compss \
+        --env_script=/gpfs/projects/dese28/eflows4hpc/esm/fesom2/env.sh \
+        --storage_props=/gpfs/projects/dese28/eflows4hpc/esm/fesom2/src/hecuba_lib/storage_props.cfg --storage_home=/apps/HECUBA/2.1_intel/compss
 ```
-
-
