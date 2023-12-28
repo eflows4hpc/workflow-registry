@@ -96,16 +96,23 @@ def _init_output_directory(
 def esm_ensemble_init(args: Namespace) -> ConfigParser:
     logger.info(f"Initializing experiment {args.expid}")
 
+    # Users can specify a different ``esm_ensemble.conf``.
     if args.config:
         model_config = args.config.expanduser()
     else:
         cwd_path = Path(__file__).parent.resolve()
         model_config = cwd_path / args.model / 'esm_ensemble.conf'
 
+    # We populate a few settings that exist only during runtime.
     config = _get_config(args.model, model_config)
     config['runtime']["expid"] = args.expid
     config['runtime']['model'] = args.model
     logger.info(f"Using eFlows4HPC configuration: {model_config}")
+
+    # Users can specify a different list of start dates (from Alien4Cloud, for instance).
+    if args.start_dates:
+        config['common']['ensemble_start_dates'] = args.start_dates
+    logger.info(f"List of start dates: {config['common']['ensemble_start_dates']}")
 
     access_rights = int(config['common']['new_dir_mode'], 8)
     logger.info(f"New directories will be created with the file mode: {oct(access_rights)}")
@@ -172,6 +179,8 @@ def _get_parser():
                         type=str, required=True)
     parser.add_argument('-c', '--config', dest='config', help='ESM configuration.',
                         type=Path, required=False)
+    parser.add_argument('--start_dates', dest='start_dates', help='Start dates.',
+                        type=str, required=False)
     parser.add_argument('--debug', dest='debug', help='Enable debug (more verbose) information.', action='store_true')
     return parser
 

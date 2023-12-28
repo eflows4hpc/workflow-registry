@@ -13,7 +13,7 @@ HPC=""
 DEBUG=""
 CORES=0
 CORES_PER_NODE=48
-MEMBERS=1
+START_DATES=""
 QOS=debug
 
 # Parse options. Note that options may be followed by one colon to indicate
@@ -37,7 +37,7 @@ while [ $# -gt 0 ]; do
     shift
     ;;
   -m | --members)
-    MEMBERS="$2"
+    START_DATES="$2"
     shift
     ;;
   -q | --qos)
@@ -83,8 +83,8 @@ if [ "${CORES_PER_NODE}" -le 0 ]; then
   exit 1
 fi
 
-if [ "${MEMBERS}" -le 0 ]; then
-  echo "Members must be equal or greater than 1"
+if [ -z "${START_DATES}" ]; then
+  echo "Start dates must be present, with spaces as separators in a single string"
   exit 1
 fi
 
@@ -92,27 +92,28 @@ printf "Launching %s eFlows4HPC ESM experiment...\U1F680\n" "${MODEL}"
 
 # Hecuba configuration
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
-HECUBA_CONFIGURATION="$(realpath -e -- "${SCRIPT_DIR}/storage_props.cfg")"
+HECUBA_CONFIGURATION="$(realpath -e -- "${SCRIPT_DIR}/${MODEL}/storage_props.cfg")"
 
 # Experiment configuration. The variables exported here are used
 # by PyCOMPSs (some Python decorators use values like ="${FESOM_CORES}").
 FESOM_CORES=${CORES}
+START_DATES_ARRAY=($START_DATES)
+NUMBER_OF_START_DATES="${#START_DATES_ARRAY[@]}"
 
 # math.ceil(fesom_cores / cores_per_node)
 NODE_ALLOCATION="$(((FESOM_CORES + CORES_PER_NODE - 1) / CORES_PER_NODE))"
-# Now multiply by number of ensemble members...
-NODE_ALLOCATION="$((NODE_ALLOCATION * MEMBERS))"
+# Now multiply by number of ensemble start dates...
+NODE_ALLOCATION="$((NODE_ALLOCATION * NUMBER_OF_START_DATES))"
 
 if [ "${CORES}" -lt "${CORES_PER_NODE}" ]; then
   echo "WARNING: You have ${CORES_PER_NODE} cores per node, but requested less: ${CORES}"
-fi
-if [ $((CORES % CORES_PER_NODE)) -ne 0 ]; then
+elif [ $((CORES % CORES_PER_NODE)) -ne 0 ]; then
   echo "WARNING: You are not using all the cores of your nodes (${CORES_PER_NODE}), you requested: ${CORES}"
 fi
 
 export FESOM_CORES
 export QOS
-export MEMBERS
+export START_DATES
 export NODE_ALLOCATION
 
 echo -e "\nLaunch arguments:\n"
@@ -123,7 +124,7 @@ echo "CORES           : ${FESOM_CORES}"
 echo "CORES PER NODE  : ${CORES_PER_NODE}"
 echo "NODES           : ${NODE_ALLOCATION}"
 echo "QOS             : ${QOS}"
-echo "MEMBERS         : ${MEMBERS}"
+echo "START DATES     : (${NUMBER_OF_START_DATES}) ${START_DATES}"
 
 echo -e "\nLoading ${HPC} configurations..."
 HPC_ENV_FILE="$(realpath -e -- "${SCRIPT_DIR}/env/${HPC}.sh")"
@@ -135,7 +136,7 @@ echo -e "Done! ${HPC} environment loaded correctly!\n"
 
 # Sample invocation of this script:
 #
-# ./launch.sh --hpc mn4 --cores 288 --qos debug --members 1
+# ./launch.sh --hpc mn4 --cores 288 --qos debug --start_dates "1990 1991"
 
 # EXP_ID=$(printf "%06d\n" $((1 + $RANDOM % 100000)))
 # --expid is now optional. Python does the same thing.
@@ -154,4 +155,5 @@ enqueue_compss -t -g -d --sc_cfg=mn.cfg \
   --num_nodes="${NODE_ALLOCATION}" \
   --pythonpath="${PWD}":"${HECUBA_ROOT}/compss" esm_simulation.py \
   --model "${MODEL}" \
+  --start_dates "${START_DATES}" \
   "${DEBUG}"
