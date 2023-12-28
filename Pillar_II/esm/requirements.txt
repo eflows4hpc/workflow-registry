@@ -1,4 +1,4 @@
-pycompss==3.3
+pycompss==3.2
 hecuba==2.1.2
 
 mypy==1.8.0
