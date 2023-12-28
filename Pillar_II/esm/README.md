@@ -27,6 +27,12 @@ get all the dependencies needed for the ESM workflow installed.
 
 ## Build
 
+To check the Shell scripts:
+
+```bash
+$ find . -name "*.sh" -exec shellcheck --external-sources {} \;
+```
+
 To check the type hints:
 
 ```bash

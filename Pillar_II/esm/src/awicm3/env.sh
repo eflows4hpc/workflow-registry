@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Modules needed for executing
 module use /apps/HECUBA/modulefiles
 module load Hecuba/2.0 # yolanda: update to a new module of hecuba
