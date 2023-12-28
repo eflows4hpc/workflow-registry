@@ -5,7 +5,12 @@ from itertools import chain
 from pathlib import Path
 from typing import List, NamedTuple
 
+from pycompss.api.api import TaskGroup  # type: ignore
+from pycompss.api.api import TaskGroup  # type: ignore
 from pycompss.api.exceptions import COMPSsException  # type: ignore
+from pycompss.api.mpi import mpi  # type: ignore
+from pycompss.api.on_failure import on_failure  # type: ignore
+from pycompss.api.parameter import IN, Type, FILE_OUT, StdIOStream, STDOUT, INOUT, Prefix  # type: ignore
 from pycompss.api.task import task  # type: ignore
 
 logger = logging.getLogger(__name__)
@@ -172,8 +177,8 @@ def init_output_dir(
         access_rights: Default file mode to create new file system entries (e.g. 0x755)
         start_dates: The list of start dates for the model run.
     """
-    if output_dir.exists() and not not output_dir.is_dir():
-        raise ValueError(f"Invalid configuration directory (expected existing directory): {dir}")
+    if output_dir.exists() and not output_dir.is_dir():
+        raise ValueError(f"Invalid configuration directory (expected existing directory): {str(output_dir)}")
 
     if not output_dir.exists():
         logger.debug(f"Creating new output directory: {output_dir}")
@@ -194,39 +199,93 @@ def init_output_dir(
             fclock.write(f"0 1 {start_date}")
 
 
-@task(returns=bool)
-def esm_dynamic_analysis(exp_id: str, start_years: List[str]) -> str:
+# TODO: not used?
+# @task(returns=bool)
+# def esm_dynamic_analysis(exp_id: str, start_years: List[str]) -> str:
+#     # NOTE: This import triggers a connection to Hecuba! Leaving it here
+#     #       makes it easier to test this scripts without COMPSs or Hecuba.
+#     from hecuba_lib.esm_dynamic_analysis_results import esm_dynamic_analysis_results  # type: ignore
+#     """Dummy method to test data exchange with Hecuba.
+#
+#     The ``ds.make_persistent`` creates the analysis, which is then used
+#     in another task.
+#
+#     Args:
+#         exp_id: Experiment ID.
+#         start_years: List of start years.
+#     Returns:
+#         The persisted task ID.
+#     """
+#     logger.info(f"Performing dynamic analysis for experiment {exp_id}")
+#     ds = esm_dynamic_analysis_results()
+#     for start_year in start_years:
+#         ds.results[start_year] = True
+#     # TODO: Check with others why only one year was being set to True here. And why
+#     #       the years were hard-coded, even though we had two sets of start years?
+#     # ds.results["1948"] = False
+#     # ds.results["1958"] = True
+#     # ds.results["1968"] = False
+#     analysis_id = f"{exp_id}_esm_dynamic_analysis"
+#     logger.info(f"Dynamic analysis ID {analysis_id}")
+#     ds.make_persistent(analysis_id)
+#     return analysis_id
+#
+#
+# TODO: Not used?
+# @on_failure(management='IGNORE')
+# @task(returns=bool)
+# def esm_member_disposal(start_date: str, config_parser: ConfigParser) -> bool:
+#     """Abort a member, deleting its data."""
+#     output_path = Path(config_parser['common']['output_dir'], start_date)
+#     if output_path.exists() and output_path.is_dir():
+#         logger.debug(f"Deleting ESM member aborted [{start_date}]: {output_path}")
+#         shutil.rmtree(output_path)
+#     # TODO: remove hecuba data of the concerned aborted member as well
+#     return True
+
+@on_failure(management='IGNORE')
+@mpi(binary="${FESOM_EXE}",
+     runner="srun",
+     processes="${FESOM_CORES}",
+     working_dir="{{working_dir_exe}}",
+     fail_by_exit_value=True,
+     processes_per_node=48  # TODO: this probably needs to be parametrized so Levante/Juwels/LUMI can also be used?
+     )
+@task(
+    log_file={
+        Type: FILE_OUT,
+        StdIOStream: STDOUT
+    },
+    working_dir_exe={
+        Type: INOUT,
+        Prefix: "#"
+    },
+    returns=int)
+def esm_simulation(log_file: str, working_dir_exe: str) -> int:
+    """PyCOMPSs task that executes the ``FESOM_EXE`` binary."""
+    return 0
+
+
+@on_failure(management='IGNORE')
+# Jorge: Prefix is only needed in @mpi or @binary to avoid to pass the parameter to the binary execution, res={Type:IN, Prefix:"#"})
+@task
+def esm_member_checkpoint(start_date: str, config_parser: ConfigParser, res: int) -> None:
     # NOTE: This import triggers a connection to Hecuba! Leaving it here
     #       makes it easier to test this scripts without COMPSs or Hecuba.
     from hecuba_lib.esm_dynamic_analysis_results import esm_dynamic_analysis_results  # type: ignore
-    """Dummy method to test data exchange with Hecuba.
-
-    The ``ds.make_persistent`` creates the analysis, which is then used
-    in another task.
-
-    Args:
-        exp_id: Experiment ID.
-        start_years: List of start years.
-    Returns:
-        The persisted task ID.
-    """
-    logger.info(f"Performing dynamic analysis for experiment {exp_id}")
-    ds = esm_dynamic_analysis_results()
-    for start_year in start_years:
-        ds.results[start_year] = True
-    # TODO: Check with others why only one year was being set to True here. And why
-    #       the years were hard-coded, even though we had two sets of start years?
-    # ds.results["1948"] = False
-    # ds.results["1958"] = True
-    # ds.results["1968"] = False
-    analysis_id = f"{exp_id}_esm_dynamic_analysis"
-    logger.info(f"Dynamic analysis ID {analysis_id}")
-    ds.make_persistent(analysis_id)
-    return analysis_id
+    # retrieve from Hecuba the last status of the ensemble members produced by the analysis (running in parallel)
+    logger.info(f"Checking status of ESM member: {start_date}")
+    logger.info(f"The returned value is {str(res)}")
+    ensemble_status = esm_dynamic_analysis_results.get_by_alias(
+        config_parser['runtime']['expid'] + "_esm_dynamic_analysis")
+    logger.info(f"Status for member [{start_date}] is: {str(ensemble_status)}")
+    if not bool(ensemble_status.results[start_date]):
+        raise COMPSsException(f"Member diverged - Aborting member: {start_date}")
 
 
 __all__ = [
     'init_top_working_dir',
     'init_output_dir',
-    'esm_dynamic_analysis',
+    'esm_simulation',
+    'esm_member_checkpoint'
 ]
