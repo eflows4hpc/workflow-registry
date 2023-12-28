@@ -135,7 +135,7 @@ def _run_esm(args: Namespace) -> None:
 
     for start_date in start_dates:
         with TaskGroup(f"{args.expid}_{start_date}", implicit_barrier=False):
-            # Launch each SIM, create an implicit dependence by passing the result to the next task (checkpoint)
+            # Launch each SIM, create an implicit dependence by passing the result to the next task (checkpoint).
             number_simulations = int(config_parser['common']['chunks'])
             logger.info(f"Total of chunks configured: {number_simulations}")
 
