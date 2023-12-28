@@ -18,7 +18,7 @@ QOS=debug
 
 # Parse options. Note that options may be followed by one colon to indicate
 # they have a required argument.
-if ! options=$(getopt --name "$(basename "$0")" --options dc:m:q: --longoptions debug,cores:,members:,qos:,hpc:,cores_per_node: -- "$@"); then
+if ! options=$(getopt --name "$(basename "$0")" --options dc:q: --longoptions debug,cores:,start_dates:,qos:,hpc:,cores_per_node: -- "$@"); then
   # Error, getopt will put out a message for us
   exit 1
 fi
@@ -36,7 +36,7 @@ while [ $# -gt 0 ]; do
     CORES="$2"
     shift
     ;;
-  -m | --members)
+  --start_dates)
     START_DATES="$2"
     shift
     ;;
@@ -92,7 +92,7 @@ printf "Launching %s eFlows4HPC ESM experiment...\U1F680\n" "${MODEL}"
 
 # Hecuba configuration
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
-HECUBA_CONFIGURATION="$(realpath -e -- "${SCRIPT_DIR}/${MODEL}/storage_props.cfg")"
+HECUBA_CONFIGURATION="$(realpath -e -- "${SCRIPT_DIR}/storage_props.cfg")"
 
 # Experiment configuration. The variables exported here are used
 # by PyCOMPSs (some Python decorators use values like ="${FESOM_CORES}").
@@ -127,7 +127,7 @@ echo "QOS             : ${QOS}"
 echo "START DATES     : (${NUMBER_OF_START_DATES}) ${START_DATES}"
 
 echo -e "\nLoading ${HPC} configurations..."
-HPC_ENV_FILE="$(realpath -e -- "${SCRIPT_DIR}/env/${HPC}.sh")"
+HPC_ENV_FILE="$(realpath -e -- "${SCRIPT_DIR}/${MODEL}/env/${HPC}.sh")"
 # Use an example so shellcheck can at least check that one when parsing
 # this file (you can lint all files independently from this).
 # shellcheck source=env/mn4.sh
