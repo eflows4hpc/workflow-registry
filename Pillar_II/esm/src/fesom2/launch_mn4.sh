@@ -37,7 +37,8 @@ COMPSS_MPI_TYPE=impi
 # $2 QoS to be used (determines the queue)
 # $3 number of simulations of the ensemble
 
-EXP_ID=$(printf "%06d\n" $((1 + $RANDOM % 100000)))
+# EXP_ID=$(printf "%06d\n" $((1 + $RANDOM % 100000)))
+# --expid is now optional. Python does the same thing.
 
 # launch the esm ensemble simulation with hecuba infraestructure through COMPSs (WORKING)
 enqueue_compss -t -g -d --sc_cfg=mn.cfg \
@@ -51,5 +52,5 @@ enqueue_compss -t -g -d --sc_cfg=mn.cfg \
   --worker_in_master_cpus=48 \
   --num_nodes=${NODE_ALLOCATION} \
   --pythonpath=$PWD:$HECUBA_ROOT/compss esm_simulation.py \
-    --expid ${EXP_ID} \
-    --model fesom2
+    --model fesom2 \
+    --debug
