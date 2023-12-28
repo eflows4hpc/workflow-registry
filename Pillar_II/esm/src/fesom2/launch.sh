@@ -15,7 +15,7 @@ QOS=debug
 
 # Parse options. Note that options may be followed by one colon to indicate
 # they have a required argument.
-if ! options=$(getopt --name "$(basename "$0")" --options dc:m:q: --longoptions debug,cores:,members:,queue:,hpc: -- "$@"); then
+if ! options=$(getopt --name "$(basename "$0")" --options dc:m:q: --longoptions debug,cores:,members:,qos:,hpc: -- "$@"); then
   # Error, getopt will put out a message for us
   exit 1
 fi
@@ -112,11 +112,7 @@ echo -e "Done! ${HPC^^} environment loaded correctly!\n"
 
 # Sample invocation of this script:
 #
-# ./launch_mn4.sh 288 debug 1
-# ./launch_mn4.sh 144 debug 3
-# $1 number of cores needed by the task
-# $2 QoS to be used (determines the queue)
-# $3 number of simulations of the ensemble
+# ./launch.sh --hpc mn4 --cores 288 --qos debug --members 1
 
 # EXP_ID=$(printf "%06d\n" $((1 + $RANDOM % 100000)))
 # --expid is now optional. Python does the same thing.
