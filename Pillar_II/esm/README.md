@@ -24,6 +24,9 @@ For PyCOMPSs you first must export this variable:
 export EXTRAE_MPI_HEADERS=/usr/include/x86_64-linux-gnu/mpi
 ```
 
+> NOTE: Extrae is a BSC tool used to trace applications providing
+>       post-mortem analysis data: https://tools.bsc.es/extrae
+
 Then you just need to run `pip install -r requirements.txt` to
 get all the dependencies needed for the ESM workflow installed.
 
