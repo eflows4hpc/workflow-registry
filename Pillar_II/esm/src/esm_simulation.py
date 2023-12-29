@@ -119,7 +119,7 @@ def esm_ensemble_init(args: Namespace) -> ConfigParser:
 
     top_working_dir = Path(config['common']['top_working_dir'], args.expid)
     output_dir = Path(config['common']['output_dir'], args.expid)
-    start_dates = config['common']['ensemble_start_dates'].split(" ")
+    start_dates = config['common']['ensemble_start_dates'].split(",")
 
     _init_top_working_directory(top_working_dir, access_rights, start_dates, config)
     _init_output_directory(output_dir, access_rights, start_dates, config)
