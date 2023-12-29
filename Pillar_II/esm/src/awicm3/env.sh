@@ -44,7 +44,7 @@ export ECE_CPL_FESOM_FESIM="false"
 export ECE_AWI_CPL_FESOM="true"
 
 # to address issue with srun
-COMPSS_MPI_TYPE=impi
+export COMPSS_MPI_TYPE=impi
 export ECCODES_SAMPLES_PATH=/apps/ECCODES/2.8.0/INTEL/share/eccodes/ifs_samples/grib1/
 
 ###################################Prepare rundir#########################################
