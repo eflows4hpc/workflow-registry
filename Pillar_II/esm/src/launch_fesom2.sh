@@ -95,8 +95,11 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 HECUBA_CONFIGURATION="$(realpath -e -- "${SCRIPT_DIR}/storage_props.cfg")"
 
 FESOM_CORES=${CORES}
-START_DATES_ARRAY=("${START_DATES}")
+IFS=','
+START_DATES_ARRAY=
+read -r -a START_DATES_ARRAY <<<"${START_DATES}"
 NUMBER_OF_START_DATES="${#START_DATES_ARRAY[@]}"
+IFS=
 
 # math.ceil(fesom_cores / cores_per_node)
 NODE_ALLOCATION="$(((FESOM_CORES + CORES_PER_NODE - 1) / CORES_PER_NODE))"
@@ -169,7 +172,8 @@ enqueue_compss \
   --worker_working_dir="${PWD}" \
   --worker_in_master_cpus="${CORES_PER_NODE}" \
   --num_nodes="${NODE_ALLOCATION}" \
-  --pythonpath="${PWD}":"${HECUBA_ROOT}/compss" esm_simulation.py \
+  --pythonpath="${PWD}":"${HECUBA_ROOT}/compss" \
+  esm_simulation.py \
   --model "${MODEL}" \
   --start_dates "\"/\"${START_DATES}/\"\"" \
   --expid "${EXP_ID}" \

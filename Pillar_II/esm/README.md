@@ -25,7 +25,7 @@ export EXTRAE_MPI_HEADERS=/usr/include/x86_64-linux-gnu/mpi
 ```
 
 > NOTE: Extrae is a BSC tool used to trace applications providing
->       post-mortem analysis data: https://tools.bsc.es/extrae
+> post-mortem analysis data: https://tools.bsc.es/extrae
 
 Then you just need to run `pip install -r requirements.txt` to
 get all the dependencies needed for the ESM workflow installed.
@@ -64,7 +64,7 @@ For example:
 $ ./launch_fesom2.sh \
         --hpc mn4 \
         --qos debug \
-        --start_dates "1990 2000" \
+        --start_dates "1948,1958" \
         --cores_per_node 48 \
         --cores 48
 ```
@@ -87,8 +87,58 @@ $ python esm_simulation.py \
         --expid 123456 \
         --model fesom2 \
         --config ~/esm_ensemble.conf \
-        --start_dates="1990 1991 1992" \
+        --start_dates="1948,1958,1968" \
         --debug
+```
+
+### Troubleshooting
+
+After you launch your experiment, you can start by confirming that the
+command used by COMPSs looks correct. That command should be printed in
+the file `.enqueue_compss`.
+
+```bash
+$ cat .enqueue_compss | sed -e 's/ -/ \\\n        -/g'
+enqueue_compss \
+        --tracing \
+        --graph=true \
+        --debug \
+        --sc_cfg=mn.cfg \
+        ...\
+        --model fesom2 \
+        --start_dates "/"1948,1958/"" \
+        --expid 006279 \
+        --debug
+```
+
+Then inspect your Slurm batch jobs outputs. At the end of the launcher
+script output you should have a Slurm job ID. The COMPSs logs will use
+that job ID in its names.
+
+```bash
+# get the job ID from the launcher script output, or from `squeue`
+$ squeue --me
+# find the job locations
+$ squeue show job $jobid
+$ head compss-31278175.out
+STARTING UP CASSANDRA...
+Launching Cassandra in the following hosts: s10r1b47
+Checking...
+0/1 nodes UP. Retry #0
+Checking...
+1/1 nodes UP. Cassandra Cluster started successfully.
+[STATS] Cluster launching process took:  18s.  985ms.
+head compss-31278175.err
+Picked up JAVA_TOOL_OPTIONS: -Xss1280k
+Picked up JAVA_TOOL_OPTIONS: -Xss1280k
+Picked up JAVA_TOOL_OPTIONS: -Xss1280k
+Connection error: ('Unable to connect to any servers', {'10.1.9.47:9042': ConnectionRefusedError(111, "Tried connecting to [('10.1.9.47', 9042)]. Last error: Connection refused")})
+Connection error: ('Unable to connect to any servers', {'10.1.9.47:9042': ConnectionRefusedError(111, "Tried connecting to [('10.1.9.47', 9042)]. Last error: Connection refused")})
+Warning: Permanently added 's10r1b47,10.2.9.47' (ECDSA) to the list of known hosts.
+remove java/8u131 (PATH, MANPATH, JAVA_HOME, JAVA_ROOT, JAVA_BINDIR, SDK_HOME,
+JDK_HOME, JRE_HOME)
+remove papi/5.5.1 (PATH, LD_LIBRARY_PATH, C_INCLUDE_PATH)
+unload PYTHON/3-intel-2021.3 (PATH, MANPATH, LIBRARY_PATH, PKG_CONFIG_PATH,
 ```
 
 #### Inspecting the Cassandra snapshots
