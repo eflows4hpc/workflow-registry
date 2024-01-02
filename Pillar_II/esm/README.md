@@ -44,6 +44,17 @@ To check the type hints:
 $ mypy src
 ```
 
+To run the tests, have a look at the `.github/workflows/pillar_ii_esm.yml`.
+You should be able to run the tests after installing the required
+dependencies, using the following command:
+
+```bash
+pytest src tests/
+```
+
+It will print the result of the tests, and will also include the test
+coverage report in the terminal.
+
 ## Running
 
 ## FESOM2
