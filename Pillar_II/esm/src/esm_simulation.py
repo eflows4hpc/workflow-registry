@@ -1,17 +1,23 @@
 import logging
+import os
 import random
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser
 from configparser import ConfigParser
 from enum import Enum, unique
 from importlib import import_module
 from pathlib import Path
+from shutil import rmtree
 from typing import Any, Callable, List
 
 from pycompss.api.api import TaskGroup  # type: ignore
+from pycompss.api.api import compss_barrier_group  # type: ignore
+from pycompss.api.api import compss_cancel_group  # type: ignore
 from pycompss.api.api import compss_wait_on  # type: ignore
 from pycompss.api.exceptions import COMPSsException  # type: ignore
+from pycompss.api.on_failure import on_failure  # type: ignore
 from pycompss.api.parameter import IN  # type: ignore
 from pycompss.api.task import task  # type: ignore
+from pycompss.runtime.management.classes import Future  # type: ignore
 
 logging.basicConfig()
 logging.root.setLevel(logging.INFO)
@@ -24,8 +30,8 @@ logger = logging.getLogger(__name__)
 
 init_top_working_dir_fn = Callable[[Path, int, List[str], ConfigParser], None]
 init_output_dir_fn = Callable[[Path, int, List[str]], None]
-esm_simulation_fn = Callable[[str, str], Any]
-esm_member_checkpoint_fn = Callable[[str, ConfigParser, Any], bool]
+esm_simulation_fn = Callable[[str, str], Future]  # int
+esm_member_checkpoint_fn = Callable[[str, ConfigParser, Any], Future]  # bool
 
 
 @unique
@@ -35,7 +41,7 @@ class Model(str, Enum):
     AWICM3 = 'awicm3'
 
 
-def _get_config(model: str, model_config: Path) -> ConfigParser:
+def _get_config(model_config: Path, model: str, start_dates: str) -> ConfigParser:
     """Get the eFlows4HPC configuration object.
 
     Args:
@@ -45,9 +51,16 @@ def _get_config(model: str, model_config: Path) -> ConfigParser:
     if not model_config.exists() or not model_config.is_file():
         raise ValueError(f"Model {model} configuration file not located at {model_config}")
 
-    config = ConfigParser(inline_comment_prefixes="#")
-    config.read(model_config)
-    return config
+    config_parser = ConfigParser(inline_comment_prefixes="#")
+    config_parser.read(model_config)
+
+    # Users can specify a different list of start dates (from Alien4Cloud, for instance).
+    # So we override the value from the configuration file.
+    if start_dates is not None and start_dates.strip() != '':
+        config_parser['common']['ensemble_start_dates'] = start_dates
+    logger.info(f"List of start dates: {config_parser['common']['ensemble_start_dates']}")
+
+    return config_parser
 
 
 def _init_top_working_directory(
@@ -93,66 +106,70 @@ def _init_output_directory(
        start_dates)
 
 
-def esm_ensemble_init(args: Namespace) -> ConfigParser:
-    logger.info(f"Initializing experiment {args.expid}")
-
-    # Users can specify a different ``esm_ensemble.conf``.
-    if args.config:
-        model_config = args.config.expanduser()
-    else:
-        cwd_path = Path(__file__).parent.resolve()
-        model_config = cwd_path / args.model / 'esm_ensemble.conf'
+@task(expid=IN, model=IN, config_parser=IN)
+def esm_ensemble_init(*, expid, model, config_parser: ConfigParser) -> ConfigParser:
+    logger.info(f"Initializing experiment {expid}")
 
     # We populate a few settings that exist only during runtime.
-    config = _get_config(args.model, model_config)
-    config['runtime']["expid"] = args.expid
-    config['runtime']['model'] = args.model
-    logger.info(f"Using eFlows4HPC configuration: {model_config}")
 
-    # Users can specify a different list of start dates (from Alien4Cloud, for instance).
-    if args.start_dates:
-        config['common']['ensemble_start_dates'] = args.start_dates
-    logger.info(f"List of start dates: {config['common']['ensemble_start_dates']}")
+    config_parser['runtime']["expid"] = expid
+    config_parser['runtime']['model'] = model
 
-    access_rights = int(config['common']['new_dir_mode'], 8)
+    access_rights = int(config_parser['common']['new_dir_mode'], 8)
     logger.info(f"New directories will be created with the file mode: {oct(access_rights)}")
 
-    top_working_dir = Path(config['common']['top_working_dir'], args.expid)
-    output_dir = Path(config['common']['output_dir'], args.expid)
-    start_dates = config['common']['ensemble_start_dates'].split(",")
+    top_working_dir = Path(config_parser['common']['top_working_dir'], expid)
+    output_dir = Path(config_parser['common']['output_dir'], expid)
+    start_dates = config_parser['common']['ensemble_start_dates'].split(",")
 
-    _init_top_working_directory(top_working_dir, access_rights, start_dates, config)
-    _init_output_directory(output_dir, access_rights, start_dates, config)
+    _init_top_working_directory(top_working_dir, access_rights, start_dates, config_parser)
+    _init_output_directory(output_dir, access_rights, start_dates, config_parser)
 
-    return config
+    return config_parser
 
 
-def _run_esm(args: Namespace) -> None:
+@on_failure(management='IGNORE')
+@task(start_date=IN, top_working_dir=IN, output_dir=IN, returns=bool)
+def esm_member_disposal(start_date: str, top_working_dir: Path, output_dir: Path) -> None:
+    # TODO: remove hecuba data aswell of the concerned aborted member
+    for path in [top_working_dir, output_dir]:
+        start_date_path = Path(path, start_date)
+        rmtree(start_date_path)
+
+
+def _run_esm(*, expid: str, model: str, config_parser: ConfigParser) -> None:
     # This is the only step that is common to the models. But we can move
     # that to a common module and call the model's code directly instead
     # if needed too. For now this is good enough.
-    config_parser: ConfigParser = compss_wait_on(esm_ensemble_init(args))
+    runtime_config_parser: ConfigParser = compss_wait_on(
+        esm_ensemble_init(
+            expid=expid,
+            model=model,
+            config_parser=config_parser
+        ))
     logger.info("ESM Initialization complete!")
 
     # This is where we delegate the ESM execution to a model's module code
     # (e.g. FESOM2, AWICM3, etc.).
-    start_dates = config_parser['common']['ensemble_start_dates'].split(" ")
-    top_working_dir = Path(config_parser['common']['top_working_dir'], args.expid)
-    model_module = import_module(f"{config_parser['runtime']['model']}")
+    ensemble_start_dates = runtime_config_parser['common']['ensemble_start_dates'].split(",")
+    top_working_dir = Path(runtime_config_parser['common']['top_working_dir'], expid)
+    output_dir = Path(config_parser['common']['output_dir'], expid)
+    model_module = import_module(f"{runtime_config_parser['runtime']['model']}")
 
-    for start_date in start_dates:
-        with TaskGroup(f"{args.expid}_{start_date}", implicit_barrier=False):
+    for start_date in ensemble_start_dates:
+        task_group = f"{expid}_{start_date}"
+        with TaskGroup(task_group, implicit_barrier=False):
             # Launch each SIM, create an implicit dependence by passing the result to the next task (checkpoint).
-            number_simulations = int(config_parser['common']['chunks'])
+            number_simulations = int(runtime_config_parser['common']['chunks'])
             logger.info(f"Total of chunks configured: {number_simulations}")
 
             for sim in range(1, number_simulations + 1):
                 working_dir_exe = top_working_dir / start_date
-                log_file = working_dir_exe / f"fesom2_{args.expid}_{start_date}_{str(sim)}.out"
+                log_file = working_dir_exe / f"fesom2_{expid}_{start_date}_{str(sim)}.out"
                 logger.info(f"Launching simulation {start_date}.{str(sim)} in {working_dir_exe}")
                 simulation_fn: esm_simulation_fn = model_module.esm_simulation
-                res: int = simulation_fn(str(log_file), str(working_dir_exe))
-                logger.info(f"Simulation binary execution return code: {res}")
+                res: Future = simulation_fn(str(log_file), str(working_dir_exe))
+                logger.debug(f"Simulation binary execution return: {res}")
                 # check the state of the member, for the first one there is nothing to check
                 if sim > 1:
                     logger.info(f"Checkpoint member: {str(sim)}")
@@ -162,9 +179,20 @@ def _run_esm(args: Namespace) -> None:
                     # compss_wait_on(model_module.esm_member_checkpoint(exp_id, sdate, res))
                     checkpoint_en: esm_member_checkpoint_fn = model_module.esm_member_checkpoint
                     try:
-                        checkpoint_en(args.expid, config_parser, res)
+                        checkpoint_en(expid, runtime_config_parser, res)
                     except COMPSsException:
                         logger.exception(f"Member [{sim}] checkpoint failed!")
+
+    for start_date in ensemble_start_dates:
+        task_group = f"{expid}_{start_date}"
+        try:
+            compss_barrier_group(task_group)
+        except COMPSsException:
+            logging.exception(f"Aborting member: {start_date}")
+            # Cancel the whole COMPSs group.
+            compss_cancel_group(task_group)
+            # clean generated data
+            esm_member_disposal(start_date=start_date, top_working_dir=top_working_dir, output_dir=output_dir)
 
 
 def _get_parser():
@@ -178,7 +206,7 @@ def _get_parser():
                         choices=[m.value for m in Model.__members__.values()],
                         type=str, required=True)
     parser.add_argument('-c', '--config', dest='config', help='ESM configuration.',
-                        type=Path, required=False)
+                        type=Path, required=True)
     parser.add_argument('--start_dates', dest='start_dates', help='Start dates.',
                         type=str, required=False)
     parser.add_argument('--debug', dest='debug', help='Enable debug (more verbose) information.', action='store_true')
@@ -197,7 +225,17 @@ def main() -> None:
 
     logger.info(f"Running simulation for model: {args.model}")
 
-    _run_esm(args)
+    # Users can specify a different ``esm_ensemble.conf``.
+    model_config = args.config.expanduser()
+
+    config_parser = _get_config(model_config, args.model, args.start_dates)
+
+    logger.info(f"Using eFlows4HPC configuration: {model_config}")
+
+    _run_esm(
+        expid=args.expid,
+        model=args.model,
+        config_parser=config_parser)
 
     logger.info("All done. Bye!")
 
