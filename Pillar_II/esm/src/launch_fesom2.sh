@@ -137,21 +137,25 @@ echo -e "Done! ${HPC} environment loaded correctly!\n"
 # --expid is now optional. Python does the same thing.
 EXP_ID=$(printf "%06d\n" $((1 + RANDOM % 100000)))
 
-cat >.pycompss_env_script.sh <<EOF
-$(cat "${SCRIPT_DIR}/${MODEL}/env/${HPC}.sh")
-
-# Experiment configuration. The variables exported here are used
-# by PyCOMPSs (some Python decorators use values like ="${FESOM_CORES}").
-# For that to happen, when calling a PyCOMPSs command like enqueue_compss
-# you must provide the --env_script=<path> option pointing to this file.
-export FESOM_CORES="${FESOM_CORES}"
-# TODO: Move this to Python, so we only have to modify it in one place.
-export FESOM_EXE="/gpfs/projects/dese28/models/fesom2_eflows4hpc/fesom2/bin/fesom.x"
-export QOS="${QOS}"
-export EXP_ID="${EXP_ID}"
-export NODE_ALLOCATION="${NODE_ALLOCATION}"
-export MEMBERS="${NUMBER_OF_START_DATES}"
-EOF
+# NOTE: For the container this may be necessary?
+# --env_script="${PWD}/.pycompss_env_script.sh" \
+# And:
+#
+#cat >.pycompss_env_script.sh <<EOF
+#$(cat "${SCRIPT_DIR}/${MODEL}/env/${HPC}.sh")
+#
+## Experiment configuration. The variables exported here are used
+## by PyCOMPSs (some Python decorators use values like ="${FESOM_CORES}").
+## For that to happen, when calling a PyCOMPSs command like enqueue_compss
+## you must provide the --env_script=<path> option pointing to this file.
+#export FESOM_CORES="${FESOM_CORES}"
+## TODO: Move this to Python, so we only have to modify it in one place.
+#export FESOM_EXE="/gpfs/projects/dese28/models/fesom2_eflows4hpc/fesom2/bin/fesom.x"
+#export QOS="${QOS}"
+#export EXP_ID="${EXP_ID}"
+#export NODE_ALLOCATION="${NODE_ALLOCATION}"
+#export MEMBERS="${NUMBER_OF_START_DATES}"
+#EOF
 
 # Launch the ESM ensemble simulation with Hecuba infrastructure using COMPSs.
 # N.B.: HECUBA_ROOT is defined when you load a Hecuba HPC Module (or manually).
@@ -166,7 +170,6 @@ enqueue_compss \
   --storage_props="${HECUBA_CONFIGURATION}" \
   --storage_home="${HECUBA_ROOT}/compss" \
   --job_name=esm_workflow \
-  --env_script="${PWD}/.pycompss_env_script.sh" \
   --exec_time=120 \
   --keep_workingdir \
   --worker_working_dir="${PWD}" \
