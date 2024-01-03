@@ -261,9 +261,9 @@ def init_output_dir(
         Prefix: "#"
     },
     returns=int)
-def esm_simulation(log_file: str, working_dir_exe: str) -> int:
+def esm_simulation(log_file: str, working_dir_exe: str) -> int:  # type: ignore
     """PyCOMPSs task that executes the ``FESOM_EXE`` binary."""
-    return 0
+    pass
 
 
 @on_failure(management='IGNORE')

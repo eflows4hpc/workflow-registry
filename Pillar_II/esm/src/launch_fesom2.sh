@@ -126,8 +126,9 @@ echo -e "\nLoading ${HPC} configurations..."
 HPC_ENV_FILE="$(realpath -e -- "${SCRIPT_DIR}/${MODEL}/env/${HPC}.sh")"
 # Use an example so shellcheck can at least check that one when parsing
 # this file (you can lint all files independently from this).
-# shellcheck source=src/fesom2/env/mn4.sh
-source "${HPC_ENV_FILE}"
+## shellcheck source=src/fesom2/env/mn4.sh
+#source "${HPC_ENV_FILE}"
+# This file is source below, after we merge the HPC env with common vars.
 echo -e "Done! ${HPC} environment loaded correctly!\n"
 
 # Sample invocation of this script:
@@ -138,24 +139,25 @@ echo -e "Done! ${HPC} environment loaded correctly!\n"
 EXP_ID=$(printf "%06d\n" $((1 + RANDOM % 100000)))
 
 # NOTE: For the container this may be necessary?
-# --env_script="${PWD}/.pycompss_env_script.sh" \
+# --env_script="${SCRIPT_DIR}/.pycompss_env_script.sh" \
 # And:
 #
-#cat >.pycompss_env_script.sh <<EOF
-#$(cat "${SCRIPT_DIR}/${MODEL}/env/${HPC}.sh")
-#
-## Experiment configuration. The variables exported here are used
-## by PyCOMPSs (some Python decorators use values like ="${FESOM_CORES}").
-## For that to happen, when calling a PyCOMPSs command like enqueue_compss
-## you must provide the --env_script=<path> option pointing to this file.
-#export FESOM_CORES="${FESOM_CORES}"
-## TODO: Move this to Python, so we only have to modify it in one place.
-#export FESOM_EXE="/gpfs/projects/dese28/models/fesom2_eflows4hpc/fesom2/bin/fesom.x"
-#export QOS="${QOS}"
-#export EXP_ID="${EXP_ID}"
-#export NODE_ALLOCATION="${NODE_ALLOCATION}"
-#export MEMBERS="${NUMBER_OF_START_DATES}"
-#EOF
+cat >.pycompss_env_script.sh <<EOF
+$(cat "${SCRIPT_DIR}/${MODEL}/env/${HPC}.sh")
+
+# Experiment configuration. The variables exported here are used
+# by PyCOMPSs (some Python decorators use values like ="${FESOM_CORES}").
+# For that to happen, when calling a PyCOMPSs command like enqueue_compss
+# you must provide the --env_script=<path> option pointing to this file.
+export FESOM_CORES="${FESOM_CORES}"
+# TODO: Move this to Python, so we only have to modify it in one place.
+export FESOM_EXE="/gpfs/projects/dese28/models/fesom2_eflows4hpc/fesom2/bin/fesom.x"
+export QOS="${QOS}"
+export EXP_ID="${EXP_ID}"
+export NODE_ALLOCATION="${NODE_ALLOCATION}"
+export MEMBERS="${NUMBER_OF_START_DATES}"
+EOF
+source .pycompss_env_script.sh
 
 # Launch the ESM ensemble simulation with Hecuba infrastructure using COMPSs.
 # N.B.: HECUBA_ROOT is defined when you load a Hecuba HPC Module (or manually).
@@ -172,12 +174,13 @@ enqueue_compss \
   --job_name=esm_workflow \
   --exec_time=120 \
   --keep_workingdir \
-  --worker_working_dir="${PWD}" \
+  --worker_working_dir="${SCRIPT_DIR}" \
   --worker_in_master_cpus="${CORES_PER_NODE}" \
   --num_nodes="${NODE_ALLOCATION}" \
-  --pythonpath="${PWD}":"${HECUBA_ROOT}/compss" \
+  --pythonpath="${SCRIPT_DIR}":"${HECUBA_ROOT}/compss" \
   esm_simulation.py \
   --model "${MODEL}" \
-  --start_dates "\"/\"${START_DATES}/\"\"" \
+  --start_dates "${START_DATES}" \
   --expid "${EXP_ID}" \
+  --config "${SCRIPT_DIR}/fesom2/esm_ensemble.conf" \
   "${DEBUG}"
