@@ -55,9 +55,39 @@ pytest src tests/
 It will print the result of the tests, and will also include the test
 coverage report in the terminal.
 
+### Compiling FESOM2
+
+[comment]: <> (This information was copied from BSC B2DROP file:
+               `compiling-fesom-with-suvi-20230926.txt`)
+
+For eFlows4HPC ESM, FESOM2 was modified to use Hecuba to store the
+model run outputs. At the time of writing, these changes have not
+yet been integrated into the main branch of their Git repository.
+They are in the [eflows_hecuba_templates_update](https://github.com/FESOM/fesom2/tree/eflows_hecuba_templates_update)
+branch.
+
+To compile it you will need to check out that branch, and then
+run `./configure.sh bsc` (replacing `bsc` by your site name).
+If you compile multiple times, it is recommended to delete the
+generated `./build` directory before each run, to avoid
+contamination of previous builds.
+
+> NOTE: In some sites you may be able to compile FESOM2 with
+>       Hecuba without loading the Hecuba module, exporting
+>       `HECUBA_ROOT=/apps/HECUBA/$version`. But on MN4 that
+>       worked up to 100%, but then after the message about
+>       linking the executable it failed by not being able
+>       to locate some compression libraries.
+
+The integration with Hecuba can be turned on or off in CMake. That
+is achieved through the `USE_HECUBAIO` flag in `CMakeLists.txt`.
+If you want to test that branch of FESOM2 without Hecuba, just set
+that to `OFF`, delete the `./build` directory, and run
+`./configure.sh $env` again.
+
 ## Running
 
-## FESOM2
+### FESOM2
 
 To run the FESOM2 ESM simulation, you need to:
 
@@ -122,6 +152,9 @@ enqueue_compss \
         --debug
 ```
 
+[comment]: <> (These Slurm commands were extracted from the document
+               `alien4cloud_notes.md` from BSC B2DROP.)
+
 Then inspect your Slurm batch jobs outputs. At the end of the launcher
 script output you should have a Slurm job ID. The COMPSs logs will use
 that job ID in its names.
@@ -154,18 +187,63 @@ unload PYTHON/3-intel-2021.3 (PATH, MANPATH, LIBRARY_PATH, PKG_CONFIG_PATH,
 
 #### Inspecting the Cassandra snapshots
 
-TODO: explain how to activate the generation of snapshots
+[comment]: <> (Information taken from BSC B2DROP file `cassandra_notes.md`.)
+
+When the eFlows4HPC ESM application runs with Hecuba, it starts
+a Cassandra cluster to store the data (using a BSC utility called
+`cassandra4slurm`, or `c4s`). Once the application is over
+the cluster is shut down. Snapshots are data files that contain data
+collected during the execution and that are persisted after the
+ESM application run. This is useful for confirming that data has
+been written, and to inspect this data.
+
+You can enable the snapshots by modifying `~/.c4s/conf/cassandra4slurm.cfg`:
+
+```ini
+CASS_HOME="$HECUBA_ROOT/cassandra-d8tree"
+CASSANDRA_LOG_DIR=/.../eflows4hpc/top_working_dir/011213/1948/logs
+DATA_PATH="/scratch/tmp"
+LOG_PATH=/.../eflows4hpc/top_working_dir/011213/1948/logs
+SNAP_PATH="/.../eflows4hpc/top_working_dir/011213/1948/logs"
+```
+
+If you have an instance of Cassandra still running, you can inspect
+it with `cqlsh %NODE_NAME%`, and try a query like
+`SELECT name FROM hecuba.istorage;`.
 
 The snapshots will be available in a folder created in your
-home directory: `~/.c4s/`. In this folder you will have another
+specified directory. In this folder you will have another
 subfolder with the `expid` that contains `cassandra.output`.
 This file contains the execution log for Cassandra.
 
-In the `~/.c4s/` directory, you will also have several files
+In the `~/.c4s/` directory, you may also have several files
 like `cassandra-snapshot-file-${expid}.txt`.
 
 You can use Python `numpy`, for instance, to access the snapshot
 data and validate that your simulation output was written correctly.
+
+In a Cassandra instance the Numpy information is available too
+with `SELECT * FROM my_app.hecuba_storagenumpy`. That will bring
+blob objects as the Numpy arrays are stored in binary. Using Python
+you can try:
+
+```py
+from hecuba import StorageNumpy
+sn = StorageNumpy(
+    None, # new storage numpy?
+   "exp24/sst/4/84")
+print(sn)
+```
+
+You can also recover old snapshots:
+
+```bash
+$ c4 RECOVER --qos=debug -t=00:10:00
+```
+
+Choose the last snapshot ID (most recent), if appropriate.
+Cassandra will start from that snapshot. Not necessarily
+fast. Then you can use `cqlsh` to run queries against it.
 
 #### Running from Alien4Cloud
 
