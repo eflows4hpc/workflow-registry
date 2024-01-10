@@ -152,6 +152,10 @@ enqueue_compss \
         --debug
 ```
 
+> NOTE: In some log files you may see variables not being replaced, like
+>       FESOM_EXE. PyCOMPSs logs the variable names, but you will find
+>       the values replaced when inspecting `.out` and `.err` files.
+
 [comment]: <> (These Slurm commands were extracted from the document
                `alien4cloud_notes.md` from BSC B2DROP.)
 
@@ -245,6 +249,22 @@ Choose the last snapshot ID (most recent), if appropriate.
 Cassandra will start from that snapshot. Not necessarily
 fast. Then you can use `cqlsh` to run queries against it.
 
+#### Some extra information about Hecuba
+
+This is from an email thread about troubleshooting the Hecuba
+integration. This is very low level Hecuba information, but
+may be useful for others with issues:
+
+> The repair operation of Cassandra is launched just before
+> generating the snapshot (in the `storage_stop.sh` script
+> that `enqueue_compss` calls to finalise Hecuba). This operation
+> is relevant when there are several replicas of the data but Hecuba
+> sets the number of replicas to `1` by default. After calling the
+> repair operation the script calls the snapshot operation of
+> Cassandra. And If you look at the end of the `.out` file you can
+> see the message from hecuba saying that the snapshot has been
+> generated. 
+
 #### Running from Alien4Cloud
 
 There is an environment initialization script:
@@ -268,3 +288,53 @@ $ compss... \
         --env_script=/gpfs/projects/dese28/eflows4hpc/esm/fesom2/env.sh \
         --storage_props=/gpfs/projects/dese28/eflows4hpc/esm/fesom2/src/hecuba_lib/storage_props.cfg --storage_home=/apps/HECUBA/2.1_intel/compss
 ```
+
+#### Running with PyCOMPSs and without Hecuba
+
+Refer to the Building notes about compiling FESOM2 without Hecuba.
+Then launch the application to test it without Hecuba.
+
+#### Running without PyCOMPSs and without Hecuba
+
+The easiest way to run the application as close to how PyCOMPSs does,
+but without PyCOMPSs, is by inspecting the `.enqueue_compss` file that
+logs the command executed by PyCOMPSs, and then executing it directly:
+
+```bash
+$ srun --nodes=1 --qos=debug --threads=1 --cpus-per-task=48 hostname
+$ squeue --me
+$ # Edit `host` file with the name of the allocated node
+$ srun --nodelist "${PWD}/host" -n 48 /gpfs/projects/dese28/models/fesom2_eflows4hpc/fesom2/bin/fesom.x
+```
+
+Replacing variables and directories with the ones for your environment.
+
+#### Running without PyCOMPSs but with Hecuba
+
+You can test the execution of the application using the ESM application
+and Hecuba, without Alien4Cloud nor PyCOMPSs with a command similar to
+this one:
+
+```bash
+$ c4s RUN \
+  -s \
+  -nC=2 \
+  -nT=2 \
+  -nA=2 \
+  -f \
+  --time=00:10:00 \
+  --qos=debug \
+  --appl="/gpfs/projects/dese28/eflows4hpc/top_working_dir/$expid/$start_date/fesom.x"
+```
+
+- Option `RUN` to start Cassandra from scratch (not from a previously generated snapshot)
+- Option `-s` requests to generate a snapshot when the application ends
+- Option `-nC` indicates the number of nodes to request for Cassandra
+- Option `-nA` the number of Application nodes
+- Option `-nT` the number of total nodes (if `nT` is equals to `nC` then the application 
+  and Cassandra share the nodes, you can specify for example `-nA=2 -nC=2 -nT=4` and
+  then you will have a disjoint set of nodes for the application and Cassandra, by
+  default all the cores in the nodes are used)
+- Option `-f` is to finalised Cassandra when the application ends
+- Option `-appl` is the command to execute the application followed by the parameters
+  of the application
