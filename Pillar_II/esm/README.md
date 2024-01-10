@@ -16,6 +16,9 @@ Each model contains template namelists included in this repository.
 Refer to those templates and to the generated final files, as well
 as the execution log files to verify the execution of the workflow.
 
+**TODO: AWICM3 needs to be updated. Then we can add sections to
+        build, run, and troubleshoot it too.**
+
 ## Installation
 
 For PyCOMPSs you first must export this variable:
@@ -85,6 +88,10 @@ If you want to test that branch of FESOM2 without Hecuba, just set
 that to `OFF`, delete the `./build` directory, and run
 `./configure.sh $env` again.
 
+### Compiling AWICM3
+
+TODO
+
 ## Running
 
 ### FESOM2
@@ -131,6 +138,10 @@ $ python esm_simulation.py \
         --start_dates="1948,1958,1968" \
         --debug
 ```
+
+### AWICM3
+
+TODO
 
 ### Troubleshooting
 
@@ -271,7 +282,7 @@ There is an environment initialization script:
 `/gpfs/projects/dese28/eflows4hpc/esm/fesom2/env.sh`
 
 This does the same initializations as in `launch_fesom2.sh`
-but also specifies cores, queue type and n/ensembles.
+but also specifies cores, queue type and ensembles.
 
 Then in the A4C topology, in the `extra_compss_opts=`
 we specify the `--env_script`:
