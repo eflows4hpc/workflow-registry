@@ -1,4 +1,5 @@
 import logging
+import os
 import shutil
 from configparser import ConfigParser
 from itertools import chain
@@ -55,6 +56,11 @@ def _get_model_config(start_date: str, config_parser: ConfigParser) -> Config:
 def _namelists(start_date: str, config: ConfigParser):
     """Get the namelists used for FESOM2.
 
+    N.B.: Python's pathlib strips trailing slashes from paths. This causes issues
+          in the templates when the variables like {CLIMATOLOGY_PATH}{START_DATE} are
+          created. This means we must always add the {os.sep} at the end.
+          https://stackoverflow.com/a/47572715
+
     Args:
         start_date: Start date.
         config: The eFlows4HPC configuration.
@@ -66,13 +72,13 @@ def _namelists(start_date: str, config: ConfigParser):
     return {
         'namelist.config.tmpl': {
             'START_YEAR': model_config.start_date,
-            'MESH_PATH': model_config.mesh_path,
-            'CLIMATOLOGY_PATH': model_config.climatology_path,
-            'OUTPUT_PATH': model_config.output_path
+            'MESH_PATH': f'{model_config.mesh_path}{os.sep}',
+            'CLIMATOLOGY_PATH': f'{model_config.climatology_path}{os.sep}',
+            'OUTPUT_PATH': f'{model_config.output_path}{os.sep}'
         },
         'namelist.cvmix.tmpl': None,
         'namelist.forcing.tmpl': {
-            'FORCING_SET_PATH': model_config.forcing_files_path
+            'FORCING_SET_PATH': f'{model_config.forcing_files_path}{os.sep}'
         },
         'namelist.ice.tmpl': None,
         'namelist.icepack.tmpl': None,

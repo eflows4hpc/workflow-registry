@@ -142,7 +142,7 @@ EXP_ID=$(printf "%06d\n" $((1 + RANDOM % 100000)))
 # --env_script="${SCRIPT_DIR}/.pycompss_env_script.sh" \
 # And:
 #
-cat >.pycompss_env_script.sh <<EOF
+cat >|.pycompss_env_script.sh <<EOF
 $(cat "${SCRIPT_DIR}/${MODEL}/env/${HPC}.sh")
 
 # Experiment configuration. The variables exported here are used
