@@ -349,3 +349,50 @@ $ c4s RUN \
 - Option `-f` is to finalised Cassandra when the application ends
 - Option `-appl` is the command to execute the application followed by the parameters
   of the application
+
+#### Other notes on FESOM2
+
+If you are troubleshooting FESOM2, you may find that changing the time
+step of the model helps to produce more (or less) messages. That can be
+achieved by modifying the template `namelist.io.tmpl`. Search for this
+line (or check the nearby lines):
+
+```bash
+io_list =  'sst       ',1, 'd', 8,
+```
+
+And test this value:
+
+```bash
+io_list =  'sst       ',1, 's', 8,
+```
+
+The example above was used because the simulation used for troubleshooting
+was very small (1 core, 1 year) so there was not enough output to confirm
+the model was working OK. You probably need a FESOM2 developer to confirm
+if this is still valid, and to assist with the namelist values.
+
+#### Other notes on Cassandra4Slurm
+
+In an experiment during the eFlows4HPC General Assembly in 2024, it
+was tested to run the model with just two cores. Besides setting the
+`FESOM_CORES`, we also exported **`C4S_APP_CORES=2`**. If you are using
+a different number of cores than the number of cores per node (i.e.
+if your HPC node has 48 cores, but you want to use just 2) you may
+have to export that setting too. Check with the Hecuba/C4S developers
+if needed, or check the [source code](https://github.com/bsc-dd/hecuba/blob/03c2e57c619c053518e1dafbb652baf1de3abc49/cassandra4slurm/scripts/job.sh#L322).
+
+If you have an error like “`my_app` was not created”, it might be because
+the `storage_props.cfg` file is not exporting the variable. The `.cfg` file
+is sourced as a Linux Shell script, and that variable must be exported so
+that its value is correctly used by Hecuba.
+
+```diff
+iff --git a/Pillar_II/esm/src/storage_props.cfg b/Pillar_II/esm/src/storage_props.cfg
+index 8fd4711..d30925d 100644
+--- a/Pillar_II/esm/src/storage_props.cfg
++++ b/Pillar_II/esm/src/storage_props.cfg
+@@ -1,2 +1,2 @@
+-EXECUTION_NAME="esm_hpcwaas"
++export EXECUTION_NAME="esm_hpcwaas"
+```
