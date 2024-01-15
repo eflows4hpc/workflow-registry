@@ -178,6 +178,7 @@ enqueue_compss \
   --worker_in_master_cpus="${CORES_PER_NODE}" \
   --num_nodes="${NODE_ALLOCATION}" \
   --pythonpath="${SCRIPT_DIR}":"${HECUBA_ROOT}/compss" \
+  --log_dir="${SCRIPT_DIR}" \
   esm_simulation.py \
   --model "${MODEL}" \
   --start_dates "${START_DATES}" \
