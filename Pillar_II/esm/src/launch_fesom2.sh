@@ -92,25 +92,15 @@ printf "Launching %s eFlows4HPC ESM experiment...\U1F680\n" "${MODEL}"
 
 # Hecuba configuration
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+source "${SCRIPT_DIR}/functions.sh"
+
 HECUBA_CONFIGURATION="$(realpath -e -- "${SCRIPT_DIR}/storage_props.cfg")"
 
+NUMBER_OF_START_DATES=$(count_start_dates "${START_DATES}")
+
+check_number_of_cores_node "${CORES}" "${CORES_PER_NODE}"
 FESOM_CORES=${CORES}
-IFS=','
-START_DATES_ARRAY=
-read -r -a START_DATES_ARRAY <<<"${START_DATES}"
-NUMBER_OF_START_DATES="${#START_DATES_ARRAY[@]}"
-IFS=
-
-# math.ceil(fesom_cores / cores_per_node)
-NODE_ALLOCATION="$(((FESOM_CORES + CORES_PER_NODE - 1) / CORES_PER_NODE))"
-# Now multiply by number of ensemble start dates...
-NODE_ALLOCATION="$((NODE_ALLOCATION * NUMBER_OF_START_DATES))"
-
-if [ "${CORES}" -lt "${CORES_PER_NODE}" ]; then
-  echo "WARNING: You have ${CORES_PER_NODE} cores per node, but requested less: ${CORES}"
-elif [ $((CORES % CORES_PER_NODE)) -ne 0 ]; then
-  echo "WARNING: You are not using all the cores of your nodes (${CORES_PER_NODE}), you requested: ${CORES}"
-fi
+NODE_ALLOCATION=$(get_nodes_allocated "${FESOM_CORES}" "${CORES_PER_NODE}" "${NUMBER_OF_START_DATES}")
 
 echo -e "\nLaunch arguments:\n"
 

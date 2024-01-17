@@ -70,8 +70,14 @@ jobs:
           cd Pillar_II/esm/
           pip install -r requirements.txt
 
-      - name: Unit Tests
+      - name: Python Unit Tests
         timeout-minutes: 3
         run: |
           cd Pillar_II/esm/
           pytest src tests/
+
+      - name: Shell Unit Tests
+        timeout-minutes: 3
+        run: |
+          cd Pillar_II/esm/
+          docker run --rm -v "${PWD}:/code" bats/bats:latest --verbose-run --recursive ./
