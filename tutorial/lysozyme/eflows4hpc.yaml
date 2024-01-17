@@ -5,4 +5,4 @@ pip:
 spack:
         specs:
                 - compss@3.3
-                - gromacs@2022.3+blas+lapack
+                - gromacs@2022.3+blas+lapack-mpi
