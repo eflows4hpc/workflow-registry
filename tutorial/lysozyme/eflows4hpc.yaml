@@ -4,5 +4,5 @@ pip:
         - pillow        
 spack:
         specs:
-                - compss
-                - gromacs+blas+lapack
+                - compss@3.3
+                - gromacs@2022.3+blas+lapack
