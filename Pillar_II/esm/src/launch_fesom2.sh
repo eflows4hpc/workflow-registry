@@ -92,6 +92,7 @@ printf "Launching %s eFlows4HPC ESM experiment...\U1F680\n" "${MODEL}"
 
 # Hecuba configuration
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+# shellcheck source=src/functions.sh
 source "${SCRIPT_DIR}/functions.sh"
 
 HECUBA_CONFIGURATION="$(realpath -e -- "${SCRIPT_DIR}/storage_props.cfg")"
@@ -99,27 +100,17 @@ HECUBA_CONFIGURATION="$(realpath -e -- "${SCRIPT_DIR}/storage_props.cfg")"
 NUMBER_OF_START_DATES=$(count_start_dates "${START_DATES}")
 
 check_number_of_cores_node "${CORES}" "${CORES_PER_NODE}"
-FESOM_CORES=${CORES}
-NODE_ALLOCATION=$(get_nodes_allocated "${FESOM_CORES}" "${CORES_PER_NODE}" "${NUMBER_OF_START_DATES}")
+NODE_ALLOCATION=$(get_nodes_allocated "${CORES}" "${CORES_PER_NODE}" "${NUMBER_OF_START_DATES}")
 
 echo -e "\nLaunch arguments:\n"
 
 echo "MODEL           : ${MODEL}"
 echo "HPC             : ${HPC}"
-echo "CORES           : ${FESOM_CORES}"
+echo "CORES           : ${CORES}"
 echo "CORES PER NODE  : ${CORES_PER_NODE}"
 echo "NODES           : ${NODE_ALLOCATION}"
 echo "QOS             : ${QOS}"
 echo "START DATES     : (${NUMBER_OF_START_DATES}) ${START_DATES}"
-
-echo -e "\nLoading ${HPC} configurations..."
-HPC_ENV_FILE="$(realpath -e -- "${SCRIPT_DIR}/${MODEL}/env/${HPC}.sh")"
-# Use an example so shellcheck can at least check that one when parsing
-# this file (you can lint all files independently from this).
-## shellcheck source=src/fesom2/env/mn4.sh
-#source "${HPC_ENV_FILE}"
-# This file is source below, after we merge the HPC env with common vars.
-echo -e "Done! ${HPC} environment loaded correctly!\n"
 
 # Sample invocation of this script:
 #
@@ -129,30 +120,19 @@ echo -e "Done! ${HPC} environment loaded correctly!\n"
 EXP_ID=$(printf "%06d\n" $((1 + RANDOM % 100000)))
 
 # NOTE: For the container this may be necessary?
-# --env_script="${SCRIPT_DIR}/.pycompss_env_script.sh" \
-# And:
-#
-cat >|.pycompss_env_script.sh <<EOF
-$(cat "${SCRIPT_DIR}/${MODEL}/env/${HPC}.sh")
+# --env_script="${SCRIPT_DIR}/${MODEL}/env/${HPC}.sh" \
 
-# Experiment configuration. The variables exported here are used
-# by PyCOMPSs (some Python decorators use values like ="${FESOM_CORES}").
-# For that to happen, when calling a PyCOMPSs command like enqueue_compss
-# you must provide the --env_script=<path> option pointing to this file.
-export FESOM_CORES="${FESOM_CORES}"
-# TODO: Move this to Python, so we only have to modify it in one place.
-export FESOM_EXE="/gpfs/projects/dese28/models/fesom2_eflows4hpc/fesom2/bin/fesom.x"
-export QOS="${QOS}"
-export EXP_ID="${EXP_ID}"
-export NODE_ALLOCATION="${NODE_ALLOCATION}"
-export MEMBERS="${NUMBER_OF_START_DATES}"
-EOF
-source .pycompss_env_script.sh
+# Use an example so shellcheck can at least check that one when parsing
+# this file (you can lint all files independently from this).
+# shellcheck source=src/fesom2/env/mn4.sh
+source "${SCRIPT_DIR}/${MODEL}/env/${HPC}.sh"
+
+# From PyCOMPSs docs: "Expected execution time of the application (in minutes)".
+_PYCOMPSS_EXEC_TIME="${_PYCOMPSS_EXEC_TIME:-120}"
 
 # Launch the ESM ensemble simulation with Hecuba infrastructure using COMPSs.
 # N.B.: HECUBA_ROOT is defined when you load a Hecuba HPC Module (or manually).
-# TODO: parametrize the COMPSs exec_time value? Quoting their docs:
-#       "Expected execution time of the application (in minutes)".
+
 enqueue_compss \
   --tracing \
   --graph=true \
@@ -162,16 +142,18 @@ enqueue_compss \
   --storage_props="${HECUBA_CONFIGURATION}" \
   --storage_home="${HECUBA_ROOT}/compss" \
   --job_name=esm_workflow \
-  --exec_time=120 \
+  --exec_time="${_PYCOMPSS_EXEC_TIME}" \
   --keep_workingdir \
   --worker_working_dir="${SCRIPT_DIR}" \
   --worker_in_master_cpus="${CORES_PER_NODE}" \
   --num_nodes="${NODE_ALLOCATION}" \
-  --pythonpath="${SCRIPT_DIR}":"${HECUBA_ROOT}/compss" \
+  --pythonpath="${SCRIPT_DIR}:${HECUBA_ROOT}/compss" \
   --log_dir="${SCRIPT_DIR}" \
   esm_simulation.py \
   --model "${MODEL}" \
   --start_dates "${START_DATES}" \
+  --processes "${CORES}" \
+  --processes_per_node "${CORES_PER_NODE}" \
   --expid "${EXP_ID}" \
   --config "${SCRIPT_DIR}/fesom2/esm_ensemble.conf" \
   "${DEBUG}"

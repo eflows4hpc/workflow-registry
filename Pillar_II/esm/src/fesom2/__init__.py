@@ -4,7 +4,7 @@ import shutil
 from configparser import ConfigParser
 from itertools import chain
 from pathlib import Path
-from typing import List, NamedTuple
+from typing import List, NamedTuple, Optional
 
 from pycompss.api.api import TaskGroup  # type: ignore
 from pycompss.api.api import TaskGroup  # type: ignore
@@ -250,24 +250,43 @@ def init_output_dir(
 #     return True
 
 @on_failure(management='IGNORE')
-@mpi(binary="${FESOM_EXE}",
-     runner="srun",
-     processes="${FESOM_CORES}",
+@mpi(runner="{{runner}}",
+     binary="{{fesom_binary_path}}",
+     processes_per_node="{{processes_per_node}}",
+     processes="{{processes}}",
      working_dir="{{working_dir_exe}}",
      fail_by_exit_value=True,
-     processes_per_node=48  # TODO: this probably needs to be parametrized so Levante/Juwels/LUMI can also be used?
      )
 @task(
+    runner={
+        Type: IN,
+    },
+    fesom_binary_path={
+        Type: IN,
+    },
+    processes_per_node={
+        Type: IN,
+    },
+    processes={
+        Type: IN,
+    },
+    working_dir_exe={
+        Type: IN,
+        Prefix: "#"
+    },
     log_file={
         Type: FILE_OUT,
         StdIOStream: STDOUT
     },
-    working_dir_exe={
-        Type: INOUT,
-        Prefix: "#"
-    },
     returns=int)
-def esm_simulation(log_file: str, working_dir_exe: str) -> int:  # type: ignore
+def esm_simulation(
+        runner: str,
+        fesom_binary_path: str,
+        processes_per_node: str,
+        processes: str,
+        working_dir_exe: str,
+        log_file: str,
+) -> Optional[int]:  # type: ignore
     """PyCOMPSs task that executes the ``FESOM_EXE`` binary."""
     pass
 

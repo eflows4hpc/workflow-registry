@@ -1,5 +1,4 @@
 import logging
-import os
 import random
 from argparse import ArgumentParser
 from configparser import ConfigParser
@@ -7,7 +6,7 @@ from enum import Enum, unique
 from importlib import import_module
 from pathlib import Path
 from shutil import rmtree
-from typing import Any, Callable, List
+from typing import Any, Callable, List, Optional
 
 from pycompss.api.api import TaskGroup  # type: ignore
 from pycompss.api.api import compss_barrier_group  # type: ignore
@@ -30,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 init_top_working_dir_fn = Callable[[Path, int, List[str], ConfigParser], None]
 init_output_dir_fn = Callable[[Path, int, List[str]], None]
-esm_simulation_fn = Callable[[str, str], Future]  # int
+esm_simulation_fn = Callable[[str, str, str, str, str, str], Future]  # int
 esm_member_checkpoint_fn = Callable[[str, ConfigParser, Any], Future]  # bool
 
 
@@ -41,12 +40,17 @@ class Model(str, Enum):
     AWICM3 = 'awicm3'
 
 
-def _get_config(model_config: Path, model: str, start_dates: str) -> ConfigParser:
+def _get_config(*, model_config: Path, model: str, start_dates: Optional[str], processes: Optional[str],
+                processes_per_node: Optional[str]) -> ConfigParser:
     """Get the eFlows4HPC configuration object.
 
     Args:
         model: The model name (see ``Model`` enum).
         model_config: The path to the model configuration file.
+        processes: Number of cores.
+        processes_per_node: Number of processes per node.
+    Returns:
+        A ``ConfigParser`` instance.
     """
     if not model_config.exists() or not model_config.is_file():
         raise ValueError(f"Model {model} configuration file not located at {model_config}")
@@ -59,6 +63,12 @@ def _get_config(model_config: Path, model: str, start_dates: str) -> ConfigParse
     if start_dates is not None and start_dates.strip() != '':
         config_parser['common']['ensemble_start_dates'] = start_dates
     logger.info(f"List of start dates: {config_parser['common']['ensemble_start_dates']}")
+
+    if processes is not None and processes.strip() != '':
+        config_parser['pycompss']['processes'] = processes
+
+    if processes_per_node is not None and processes_per_node.strip() != '':
+        config_parser['pycompss']['processes_per_node'] = processes_per_node
 
     return config_parser
 
@@ -131,7 +141,7 @@ def esm_ensemble_init(*, expid, model, config_parser: ConfigParser) -> ConfigPar
 @on_failure(management='IGNORE')
 @task(start_date=IN, top_working_dir=IN, output_dir=IN, returns=bool)
 def esm_member_disposal(start_date: str, top_working_dir: Path, output_dir: Path) -> None:
-    # TODO: remove hecuba data aswell of the concerned aborted member
+    # TODO: remove hecuba data as well of the concerned aborted member
     for path in [top_working_dir, output_dir]:
         start_date_path = Path(path, start_date)
         rmtree(start_date_path)
@@ -164,11 +174,23 @@ def _run_esm(*, expid: str, model: str, config_parser: ConfigParser) -> None:
             logger.info(f"Total of chunks configured: {number_simulations}")
 
             for sim in range(1, number_simulations + 1):
+                runner = runtime_config_parser['pycompss']['runner']
+                fesom_binary_path = runtime_config_parser['fesom2']['fesom_binary_path']
+                processes_per_node = runtime_config_parser['pycompss']['processes_per_node']
+                processes = runtime_config_parser['pycompss']['processes']
                 working_dir_exe = top_working_dir / start_date
-                log_file = working_dir_exe / f"fesom2_{expid}_{start_date}_{str(sim)}.out"
+                log_file = str(working_dir_exe / f"fesom2_{expid}_{start_date}_{str(sim)}.out")
                 logger.info(f"Launching simulation {start_date}.{str(sim)} in {working_dir_exe}")
+                logger.info(f"Processes [{processes}], per node [{processes_per_node}], runner [{runner}]")
                 simulation_fn: esm_simulation_fn = model_module.esm_simulation
-                res: Future = simulation_fn(str(log_file), str(working_dir_exe))
+                res: Future = simulation_fn(
+                    runner,
+                    fesom_binary_path,
+                    processes_per_node,
+                    processes,
+                    str(working_dir_exe),
+                    log_file
+                )
                 logger.debug(f"Simulation binary execution return: {res}")
                 # check the state of the member, for the first one there is nothing to check
                 if sim > 1:
@@ -209,6 +231,10 @@ def _get_parser():
                         type=Path, required=True)
     parser.add_argument('--start_dates', dest='start_dates', help='Start dates.',
                         type=str, required=False)
+    parser.add_argument('--processes', dest='processes', help='Number of cores for the simulation.',
+                        type=str, required=False)
+    parser.add_argument('--processes_per_node', dest='processes_per_node', help='Number of cores per node.',
+                        type=str, required=False)
     parser.add_argument('--debug', dest='debug', help='Enable debug (more verbose) information.', action='store_true')
     return parser
 
@@ -228,7 +254,12 @@ def main() -> None:
     # Users can specify a different ``esm_ensemble.conf``.
     model_config = args.config.expanduser()
 
-    config_parser = _get_config(model_config, args.model, args.start_dates)
+    config_parser = _get_config(
+        model_config=model_config,
+        model=args.model,
+        start_dates=args.start_dates,
+        processes=args.processes,
+        processes_per_node=args.processes_per_node)
 
     logger.info(f"Using eFlows4HPC configuration: {model_config}")
 

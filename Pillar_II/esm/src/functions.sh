@@ -39,7 +39,7 @@ function count_start_dates() {
   oldIFS=$IFS
   IFS=','
   local START_DATES_ARRAY=
-  read -r -a START_DATES_ARRAY <<<"${ARR_STRING}"
+  read -r -a START_DATES_ARRAY <<<"${ARR_STRING[@]}"
   local NUMBER_OF_START_DATES="${#START_DATES_ARRAY[@]}"
   IFS=$oldIFS
   echo "${NUMBER_OF_START_DATES}"
