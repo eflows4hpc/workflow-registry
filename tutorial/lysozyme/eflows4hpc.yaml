@@ -1,7 +1,9 @@
 apt:
         - grace
+        - graphviz
 pip:
-        - pillow        
+        - pillow
+        - rocrate       
 spack:
         specs:
                 - compss@3.3
