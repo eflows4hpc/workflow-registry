@@ -98,21 +98,21 @@ def _init_top_working_directory(
 
 
 def _init_output_directory(
-        top_working_dir: Path,
+        output_dir: Path,
         access_rights: int,
         start_dates: List[str],
         config: ConfigParser) -> None:
     """Prepare the output directories for the model run.
 
     Args:
-        top_working_dir: The model top working directory, where files needed to run the model reside for each member.
+        output_dir: The model output directory, where the model may write data like NetCDF files, or images.
         access_rights: Default file mode to create new file system entries (e.g. 0x755)
         start_dates: The list of start dates for the model run.
         config: eFlows4HPC configuration.
     """
     model_module = import_module(f"{config['runtime']['model']}")
     fn: init_output_dir_fn = model_module.init_output_dir
-    fn(top_working_dir,
+    fn(output_dir,
        access_rights,
        start_dates)
 
