@@ -64,11 +64,12 @@ def _get_config(*, model_config: Path, model: str, start_dates: Optional[str], p
         config_parser['common']['ensemble_start_dates'] = start_dates
     logger.info(f"List of start dates: {config_parser['common']['ensemble_start_dates']}")
 
-    if processes is not None and processes.strip() != '':
-        config_parser['pycompss']['processes'] = processes
+    if processes is not None:
+        # ``str()`` as ``ConfigParser`` can only store strings.
+        config_parser['pycompss']['processes'] = str(processes)
 
-    if processes_per_node is not None and processes_per_node.strip() != '':
-        config_parser['pycompss']['processes_per_node'] = processes_per_node
+    if processes_per_node is not None:
+        config_parser['pycompss']['processes_per_node'] = str(processes_per_node)
 
     return config_parser
 
@@ -184,12 +185,12 @@ def _run_esm(*, expid: str, model: str, config_parser: ConfigParser) -> None:
                 logger.info(f"Processes [{processes}], per node [{processes_per_node}], runner [{runner}]")
                 simulation_fn: esm_simulation_fn = model_module.esm_simulation
                 res: Future = simulation_fn(
-                    runner,
-                    fesom_binary_path,
-                    processes_per_node,
-                    processes,
+                    log_file,
                     str(working_dir_exe),
-                    log_file
+                    runner,
+                    processes,
+                    fesom_binary_path,
+                    processes_per_node
                 )
                 logger.debug(f"Simulation binary execution return: {res}")
                 # check the state of the member, for the first one there is nothing to check
@@ -232,9 +233,9 @@ def _get_parser():
     parser.add_argument('--start_dates', dest='start_dates', help='Start dates.',
                         type=str, required=False)
     parser.add_argument('--processes', dest='processes', help='Number of cores for the simulation.',
-                        type=str, required=False)
+                        type=int, required=False)
     parser.add_argument('--processes_per_node', dest='processes_per_node', help='Number of cores per node.',
-                        type=str, required=False)
+                        type=int, required=False)
     parser.add_argument('--debug', dest='debug', help='Enable debug (more verbose) information.', action='store_true')
     return parser
 
