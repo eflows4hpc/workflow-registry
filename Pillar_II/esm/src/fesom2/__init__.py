@@ -250,15 +250,26 @@ def init_output_dir(
 #     return True
 
 @on_failure(management='IGNORE')
-@mpi(runner="{{runner}}",
-     binary="{{fesom_binary_path}}",
-     processes_per_node="{{processes_per_node}}",
+@mpi(binary="{{fesom_binary_path}}",
+     runner="{{runner}}",
      processes="{{processes}}",
      working_dir="{{working_dir_exe}}",
+     processes_per_node="{{processes_per_node}}",
      fail_by_exit_value=True,
      )
 @task(
+    log_file={
+        Type: FILE_OUT,
+        StdIOStream: STDOUT
+    },
+    working_dir_exe={
+        Type: INOUT,
+        Prefix: "#"
+    },
     runner={
+        Type: IN,
+    },
+    processes={
         Type: IN,
     },
     fesom_binary_path={
@@ -267,25 +278,14 @@ def init_output_dir(
     processes_per_node={
         Type: IN,
     },
-    processes={
-        Type: IN,
-    },
-    working_dir_exe={
-        Type: IN,
-        Prefix: "#"
-    },
-    log_file={
-        Type: FILE_OUT,
-        StdIOStream: STDOUT
-    },
     returns=int)
 def esm_simulation(
-        runner: str,
-        fesom_binary_path: str,
-        processes_per_node: str,
-        processes: str,
-        working_dir_exe: str,
         log_file: str,
+        working_dir_exe: str,
+        runner: str,
+        processes: int,
+        fesom_binary_path: str,
+        processes_per_node: int,
 ) -> Optional[int]:  # type: ignore
     """PyCOMPSs task that executes the ``FESOM_EXE`` binary."""
     pass
