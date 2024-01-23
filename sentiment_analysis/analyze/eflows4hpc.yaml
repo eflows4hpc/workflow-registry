@@ -1,10 +1,9 @@
-apt: []
 spack:
         specs:
-                - compss==3.1
-                - py-parsoda==1.2.0
+                - compss@3.1
+                - py-parsoda@1.2.0
 pip:
-        - fastkml>=0.12,<1
-        - geopy>=2.2.0,<3
-        - shapely>=2.0.1,<3
-        - emoji>=1.7.0,<2
+        - fastkml==0.12
+        - geopy==2.2.0
+        - shapely==2.0.1
+        - emoji==1.7.0

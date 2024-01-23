@@ -1,8 +1,10 @@
 apt:
         - grace
+        - graphviz
 pip:
-        - pillow        
+        - pillow
+        - rocrate       
 spack:
         specs:
-                - compss
-                - gromacs+blas+lapack
+                - compss@3.3
+                - gromacs@2022.3~mpi^fftw~mpi

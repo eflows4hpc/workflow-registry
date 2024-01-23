@@ -1,6 +1,7 @@
 spack:
         specs:
                 - cassandra
-                - compss
-                - fesom2@eflows4hpc
+                - compss@eflows4hpc
+                - fesom2@eflows4hpc+hecuba
+                - py-hecuba  
                 - py-dislib
