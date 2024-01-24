@@ -12,22 +12,30 @@ MODEL="fesom2"
 HPC=""
 DEBUG=""
 CORES=0
-CORES_PER_NODE=48
+CORES_PER_NODE=0
 START_DATES=""
-QOS=debug
+QOS=""
 
 # Parse options. Note that options may be followed by one colon to indicate
 # they have a required argument.
-if ! options=$(getopt --name "$(basename "$0")" --options dc:q: --longoptions debug,cores:,start_dates:,qos:,hpc:,cores_per_node: -- "$@"); then
+if ! options=$(getopt --name "$(basename "$0")" --options hdc:q: --longoptions help,debug,cores:,start_dates:,qos:,hpc:,cores_per_node: -- "$@"); then
   # Error, getopt will put out a message for us
   exit 1
 fi
 
 eval set -- "${options}"
 
+function usage() {
+  echo "Usage: $0 --hpc <mn4|levante> -c|--cores <CORES> --cores_per_node <CORES_PER_NODE> --start_dates <YYYY,YYYY> [-q|--qos <QUEUE>] [-d|--debug] [-h|--help]" 1>&2
+  exit 1
+}
+
 while [ $# -gt 0 ]; do
   # Consume next (1st) argument
   case "$1" in
+  -h | --help)
+    usage
+    ;;
   -d | --debug)
     DEBUG="--debug"
     ;;
@@ -58,10 +66,10 @@ while [ $# -gt 0 ]; do
     ;;
   -*)
     echo "$0: error - unrecognized option $1" 1>&2
-    exit 1
+    usage
     ;;
   *)
-    break
+    usage
     ;;
   esac
   # Fetch next argument as 1st
@@ -69,23 +77,23 @@ while [ $# -gt 0 ]; do
 done
 
 if [ -z "${HPC}" ]; then
-  echo "Please provide a valid HPC environment name"
-  exit 1
+  echo -e "Please provide a valid HPC environment name\n"
+  usage
 fi
 
 if [ "${CORES}" -le 0 ]; then
-  echo "Cores must be equal or greater than 1"
-  exit 1
+  echo -e "Cores must be equal or greater than 1\n"
+  usage
 fi
 
 if [ "${CORES_PER_NODE}" -le 0 ]; then
-  echo "Cores per node must be equal or greater than 1"
-  exit 1
+  echo -e "Cores per node must be equal or greater than 1\n"
+  usage
 fi
 
 if [ -z "${START_DATES}" ]; then
-  echo "Start dates must be present, with spaces as separators in a single string"
-  exit 1
+  echo -e "Start dates must be present, with spaces as separators in a single string\n"
+  usage
 fi
 
 printf "Launching %s eFlows4HPC ESM experiment...\U1F680\n" "${MODEL}"
