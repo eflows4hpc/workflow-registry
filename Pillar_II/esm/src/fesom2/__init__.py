@@ -43,7 +43,7 @@ def _get_model_config(start_date: str, config_parser: ConfigParser) -> Config:
     mesh_path = Path(config_parser['fesom2']['mesh_file_path'])
     climatology_path = Path(config_parser['fesom2']['climatology_path'])
     forcing_files_path = Path(config_parser['fesom2']['forcing_files_path'])
-    output_path = Path(config_parser['common']['output_dir'], start_date)
+    output_path = Path(config_parser['common']['output_dir'], config_parser['runtime']['expid'], start_date)
     return Config(
         start_date=start_date,
         mesh_path=mesh_path,
@@ -267,8 +267,8 @@ def esm_simulation(
     @mpi(binary=binary,
          runner=runner,
          processes=processes,
-         working_dir="{{working_dir_exe}}",
          processes_per_node=processes_per_node,
+         working_dir="{{working_dir_exe}}",
          fail_by_exit_value=True,
          )
     @task(
