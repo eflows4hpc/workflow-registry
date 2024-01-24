@@ -260,6 +260,76 @@ Choose the last snapshot ID (most recent), if appropriate.
 Cassandra will start from that snapshot. Not necessarily
 fast. Then you can use `cqlsh` to run queries against it.
 
+The snapshot ID should contain the job ID, and also a
+timestamp (e.g. `20240124D2316h36s-31512456` where the
+job ID is `31512456`).
+
+After that, a Slurm job will be issued, and some node(s)
+allocated for your analysis. Connect via SSH to one of these
+nodes, and load the modules for the analysis (you can load all
+the modules for the ESM with
+`source workflow-registry/Pillar_II/esm/src/fesom2/env/mn4.sh`).
+
+Now check what is the IP of the socket bound using the port
+`9042` (Cassandra). Take note, and issue the command
+`cqlsh $IP_ADDRESS`.
+
+If that works, you will be presented with a Cassandra
+session where you can query its tables. Try this one:
+
+```sql
+cqlsh> select storage_id, base_numpy, name from hecuba.istorage;
+
+ storage_id                           | base_numpy                           | name
+--------------------------------------+--------------------------------------+-----------------------------
+ 657cf72a-1142-5142-a0fb-1ffd95e78347 | 657cf72a-1142-5142-a0fb-1ffd95e78347 |   esm_hpcwaas.fesom/sst/1/1
+ 76c5d28b-11e7-5ea7-b0d5-4f140fcbdd32 | 76c5d28b-11e7-5ea7-b0d5-4f140fcbdd32 |  esm_hpcwaas.fesom/salt/1/0
+ c169b2ef-9532-5bcb-844d-2b7a0dd5c36c | c169b2ef-9532-5bcb-844d-2b7a0dd5c36c |   esm_hpcwaas.fesom/sst/1/0
+ 86d2d8fb-c976-5f16-b889-f4ab527a9e1c | 86d2d8fb-c976-5f16-b889-f4ab527a9e1c | esm_hpcwaas.fesom/a_ice/1/0
+ 544f8a9b-273f-512d-9440-c22b461ca4ae |                                 null |           esm_hpcwaas.fesom
+ 12da3e18-93bd-5d52-a4c3-9008202adb2b | 12da3e18-93bd-5d52-a4c3-9008202adb2b |  esm_hpcwaas.fesom/temp/1/0
+ 26829605-777d-5db2-a0be-a0642aa045fd | 26829605-777d-5db2-a0be-a0642aa045fd | esm_hpcwaas.fesom/a_ice/1/1
+ 028291ae-b233-53db-a441-e1ef562fa1e8 |                                 null | esm_hpcwaas.fesom_variables
+ f56f8bd1-e507-5b1e-9b0e-076e055cb0ba | f56f8bd1-e507-5b1e-9b0e-076e055cb0ba |    esm_hpcwaas.fesom/time/1
+ e4e717bf-f1c6-576a-9481-580bc6ef69f1 | e4e717bf-f1c6-576a-9481-580bc6ef69f1 |  esm_hpcwaas.fesom/salt/1/1
+ e639086e-b351-5c53-ab8b-74b7c8aba3eb | e639086e-b351-5c53-ab8b-74b7c8aba3eb |  esm_hpcwaas.fesom/temp/1/1
+(11 rows)
+```
+
+This table contains the NumPy arrays encoded as binary. Now close
+your Cassandra SQL session to go back to the terminal and run Python
+code to read those NumPy arrays.
+
+First you must export this variable so that the Hecuba Python module
+tries to connect to the correct server (it tries to connect as soon
+as it is imported and loaded): `export CONTACT_NAMES=$IP_ADDRESS`.
+
+Now start Python (it is available through the Hecuba Lua module).
+
+```bash
+Python 3.6.4 (v3.6.4:d48ecebad5, Feb 22 2018, 20:03:55)
+[GCC 7.2.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> from hecuba import StorageNumpy
+>>> sn = StorageNumpy(None, "esm_hpcwaas.fesom/sst/1/1")
+>>> sn
+StorageNumpy([[-1.69516357],
+              [-1.63526838],
+              [4.52766129],
+              ...,
+              [-1.78821337],
+              [-1.78277992],
+              [-1.76784116]])
+```
+
+If you see an array like the one above being printed, then
+you have successfully read the Cassandra snapshot from a previous
+execution.
+
+Note that `esm_hpcwaas.fesom/sst/1/1` is one of the entries
+in the output of the previous query to `hecuba.istorage`
+(the `name` column).
+
 #### Some extra information about Hecuba
 
 This is from an email thread about troubleshooting the Hecuba
