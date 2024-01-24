@@ -160,6 +160,14 @@ def _run_esm(*, expid: str, model: str, config_parser: ConfigParser) -> None:
         ))
     logger.info("ESM Initialization complete!")
 
+    # Create environment variables that we need for COMPSs as
+    # it cannot read certain variables during runtime (i.e.
+    # ``{{processes}}`` in a ``@mpi`` task).
+    runner = runtime_config_parser['pycompss']['runner']
+    fesom_binary_path = runtime_config_parser['fesom2']['fesom_binary_path']
+    processes = runtime_config_parser['pycompss']['processes']
+    processes_per_node = runtime_config_parser['pycompss']['processes_per_node']
+
     # This is where we delegate the ESM execution to a model's module code
     # (e.g. FESOM2, AWICM3, etc.).
     ensemble_start_dates = runtime_config_parser['common']['ensemble_start_dates'].split(",")
@@ -175,10 +183,6 @@ def _run_esm(*, expid: str, model: str, config_parser: ConfigParser) -> None:
             logger.info(f"Total of chunks configured: {number_simulations}")
 
             for sim in range(1, number_simulations + 1):
-                runner = runtime_config_parser['pycompss']['runner']
-                fesom_binary_path = runtime_config_parser['fesom2']['fesom_binary_path']
-                processes_per_node = runtime_config_parser['pycompss']['processes_per_node']
-                processes = runtime_config_parser['pycompss']['processes']
                 working_dir_exe = top_working_dir / start_date
                 log_file = str(working_dir_exe / f"fesom2_{expid}_{start_date}_{str(sim)}.out")
                 logger.info(f"Launching simulation {start_date}.{str(sim)} in {working_dir_exe}")
@@ -187,9 +191,9 @@ def _run_esm(*, expid: str, model: str, config_parser: ConfigParser) -> None:
                 res: Future = simulation_fn(
                     log_file,
                     str(working_dir_exe),
+                    fesom_binary_path,
                     runner,
                     processes,
-                    fesom_binary_path,
                     processes_per_node
                 )
                 logger.debug(f"Simulation binary execution return: {res}")

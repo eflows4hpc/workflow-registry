@@ -253,7 +253,7 @@ print(sn)
 You can also recover old snapshots:
 
 ```bash
-$ c4 RECOVER --qos=debug -t=00:10:00
+$ c4s RECOVER --qos=debug -t=00:10:00
 ```
 
 Choose the last snapshot ID (most recent), if appropriate.
