@@ -71,6 +71,12 @@ def _get_config(*, model_config: Path, model: str, start_dates: Optional[str], p
     if processes_per_node is not None:
         config_parser['pycompss']['processes_per_node'] = str(processes_per_node)
 
+    # TODO: A possible fix for the warning in PyCOMPSs?
+    # if processes is not None and processes_per_node is not None:
+    #     if int(processes) < int(processes_per_node):
+    #         logger.warning("Processes is smaller than processes per node. Fixing it so PyCOMPSs does not fail/warn.")
+    #         config_parser['pycompss']['processes'] = config_parser['pycompss']['processes_per_node']
+
     return config_parser
 
 
