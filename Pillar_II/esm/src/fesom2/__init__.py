@@ -249,46 +249,46 @@ def init_output_dir(
 #     # TODO: remove hecuba data of the concerned aborted member as well
 #     return True
 
-@on_failure(management='IGNORE')
-@mpi(binary="{{fesom_binary_path}}",
-     runner="{{runner}}",
-     processes="{{processes}}",
-     working_dir="{{working_dir_exe}}",
-     processes_per_node="{{processes_per_node}}",
-     fail_by_exit_value=True,
-     )
-@task(
-    log_file={
-        Type: FILE_OUT,
-        StdIOStream: STDOUT
-    },
-    working_dir_exe={
-        Type: INOUT,
-        Prefix: "#"
-    },
-    runner={
-        Type: IN,
-    },
-    processes={
-        Type: IN,
-    },
-    fesom_binary_path={
-        Type: IN,
-    },
-    processes_per_node={
-        Type: IN,
-    },
-    returns=int)
 def esm_simulation(
         log_file: str,
-        working_dir_exe: str,
+        working_dir: str,
+        binary: str,
         runner: str,
-        processes: int,
-        fesom_binary_path: str,
-        processes_per_node: int,
-) -> Optional[int]:  # type: ignore
-    """PyCOMPSs task that executes the ``FESOM_EXE`` binary."""
-    pass
+        processes: str,
+        processes_per_node: str
+) -> int:
+    # N.B.: We return a function here, similar to a decorator, but we
+    #       are binding all the variable values (doing a poor-man's
+    #       variable hoisting?), so that PyCOMPSs and srun are able
+    #       to access the values on runtime. Using export VAR=VALUE
+    #       in a subprocess call did not work, neither did calling
+    #       os.env[VAR]=VALUE.
+    @on_failure(management='IGNORE')
+    @mpi(binary=binary,
+         runner=runner,
+         processes=processes,
+         working_dir="{{working_dir_exe}}",
+         processes_per_node=processes_per_node,
+         fail_by_exit_value=True,
+         )
+    @task(
+        log_file={
+            Type: FILE_OUT,
+            StdIOStream: STDOUT
+        },
+        working_dir_exe={
+            Type: INOUT,
+            Prefix: "#"
+        },
+        returns=int)
+    def _esm_simulation(
+            log_file: str,
+            working_dir_exe: str
+    ) -> Optional[int]:  # type: ignore
+        """PyCOMPSs task that executes the ``FESOM_EXE`` binary."""
+        pass
+
+    return _esm_simulation(log_file, working_dir)
 
 
 @on_failure(management='IGNORE')
