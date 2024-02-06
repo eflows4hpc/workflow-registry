@@ -2,3 +2,5 @@ spack:
         specs:
                 - compss@3.3
                 - py-dislib
+pip:
+        - pandas==1.3.5
