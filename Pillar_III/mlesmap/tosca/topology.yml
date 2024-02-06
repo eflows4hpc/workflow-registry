@@ -1,0 +1,250 @@
+tosca_definitions_version: alien_dsl_3_0_0
+
+metadata:
+  template_name: MleSmapTraining
+  template_version: 0.1.0-SNAPSHOT
+  template_author: jorge
+
+description: ""
+
+imports:
+  - yorc-types:1.1.0
+  - eflows4hpc.env:1.1.0
+  - tosca-normative-types:1.0.0-ALIEN20
+  - dls.ansible:1.4.4-SNAPSHOT
+  - alien-base-types:3.0.0
+  - imagecreation.ansible:1.3.0-SNAPSHOT
+  - org.eflows4hpc.pycompss.plugin:1.1.0
+
+topology_template:
+  inputs:
+    image_path:
+      type: string
+      required: false
+      description: "path of the file on the remote host"
+    user_id:
+      type: string
+      required: false
+      description: "user id on the remote host"
+    vault_id:
+      type: string
+      required: false
+      description: "credential id on the remote host"
+  node_templates:
+    ImageCreation:
+      metadata:
+        a4c_edit_x: 521
+        a4c_edit_y: "-219"
+      type: imagecreation.ansible.nodes.ImageCreation
+      properties:
+        service_url: "https://eflows4hpc.bsc.es/image_creation"
+        insecure_tls: false
+        username: { get_secret: [/secret/data/services_secrets/image_creation, data=user] }
+        password: { get_secret: [/secret/data/services_secrets/image_creation, data=password] }
+        machine: 
+          container_engine: singularity
+          mpi: ""
+          gpu: ""
+          platform: "linux/amd64"
+          architecture: sandybridge
+        workflow: "Pillar_III"
+        step_id: mlesmap
+        force: false
+        debug: false
+        run_in_standard_mode: true
+      requirements:
+        - dependsOnAbstractEnvironmentExec_env:
+            type_requirement: environment
+            node: Abstract_HPC_Site
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+    PyCOMPSJob:
+      metadata:
+        a4c_edit_x: "-93"
+        a4c_edit_y: 107
+      type: org.eflows4hpc.pycompss.plugin.nodes.PyCOMPSJob
+      properties:
+        submission_params: 
+          qos: debug
+          python_interpreter: ""
+          num_nodes: 1
+          extra_compss_opts: ""
+        keep_environment: false
+      requirements:
+        - dependsOnAbstractEnvironmentExec_env:
+            type_requirement: environment
+            node: Abstract_HPC_Site
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+        - dependsOnDlsdagModelSearchUploadFeature:
+            type_requirement: dependency
+            node: Model_search_results_upload
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+        - dependsOnDlsdagImageTransferFeature:
+            type_requirement: img_transfer
+            node: ImageTransfer
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+    Parameters_file_download:
+      metadata:
+        a4c_edit_x: "-385"
+        a4c_edit_y: "-41"
+      type: dls.ansible.nodes.HTTP2SSH
+      properties:
+        dag_id: plainhttp2ssh
+        force: true
+        input_name_for_url: url
+        input_name_for_target_path: "data_path"
+        input_name_for_login: "user_id"
+        input_name_for_vault_id: "vault_id"
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
+        debug: false
+        user_id: ""
+        vault_id: ""
+        run_in_standard_mode: false
+      requirements:
+        - dependsOnAbstractEnvironmentExec_env:
+            type_requirement: environment
+            node: Abstract_HPC_Site
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+        - dependsOnPyCompsJobFeature:
+            type_requirement: dependency
+            node: PyCOMPSJob
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+    Input_dataset_download:
+      metadata:
+        a4c_edit_x: "-135"
+        a4c_edit_y: "-42"
+      type: dls.ansible.nodes.DLSDAGWebdavStageInData
+      properties:
+        dag_id: "webdav_stagein"
+        input_name_for_oid: oid
+        input_name_for_target_path: "data_path"
+        input_name_for_login: "user_id"
+        input_name_for_vault_id: "vault_id"
+        force: false
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
+        debug: false
+        user_id: ""
+        vault_id: ""
+        run_in_standard_mode: false
+      requirements:
+        - dependsOnAbstractEnvironmentExec_env:
+            type_requirement: environment
+            node: Abstract_HPC_Site
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+        - dependsOnPyCompsJobFeature:
+            type_requirement: dependency
+            node: PyCOMPSJob
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+    Model_search_results_upload:
+      metadata:
+        a4c_edit_x: 55
+        a4c_edit_y: 214
+      type: dls.ansible.nodes.DLSDAGModelSearchUpload
+      properties:
+        dag_id: "model_search_upload"
+        input_name_for_experiment: experiment
+        input_name_for_location: location
+        input_name_for_login: "user_id"
+        input_name_for_vault_id: "vault_id"
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
+        debug: false
+        user_id: ""
+        vault_id: ""
+        run_in_standard_mode: false
+      requirements:
+        - dependsOnAbstractEnvironmentExec_env:
+            type_requirement: environment
+            node: Abstract_HPC_Site
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+    Abstract_HPC_Site:
+      metadata:
+        a4c_edit_x: 785
+        a4c_edit_y: "-16"
+      type: eflows4hpc.env.nodes.AbstractEnvironment
+    ImageTransfer:
+      metadata:
+        a4c_edit_x: 241
+        a4c_edit_y: "-177"
+      type: dls.ansible.nodes.DLSDAGImageTransfer
+      properties:
+        image_builder_url: "https://eflows4hpc.bsc.es/image_creation"
+        image_builder_vault_secret_path: "/services_secrets/image_creation"
+        target_path: { get_input: image_path }
+        run_in_standard_mode: true
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
+        dag_id: "transfer_image"
+        debug: false
+        user_id: { get_input: user_id }
+        vault_id: { get_input: vault_id }
+      requirements:
+        - dependsOnAbstractHpcSiteExec_env:
+            type_requirement: environment
+            node: Abstract_HPC_Site
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+        - dependsOnImageCreationFeature:
+            type_requirement: dependency
+            node: ImageCreation
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+  workflows:
+    modelSelection:
+      steps:
+        Parameters_file_download_submit:
+          target: Parameters_file_download
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - Parameters_file_download_run
+        Input_dataset_download_run:
+          target: Input_dataset_download
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - PyCOMPSJob_submit
+        Model_search_results_upload_submit:
+          target: Model_search_results_upload
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - Model_search_results_upload_run
+        Model_search_results_upload_run:
+          target: Model_search_results_upload
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+        Input_dataset_download_submit:
+          target: Input_dataset_download
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - Input_dataset_download_run
+        PyCOMPSJob_submit:
+          target: PyCOMPSJob
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - PyCOMPSJob_run
+        PyCOMPSJob_run:
+          target: PyCOMPSJob
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - Model_search_results_upload_submit
+        Parameters_file_download_run:
+          target: Parameters_file_download
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - PyCOMPSJob_submit
