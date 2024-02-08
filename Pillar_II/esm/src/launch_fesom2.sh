@@ -157,7 +157,7 @@ enqueue_compss \
   --num_nodes="${NODE_ALLOCATION}" \
   --pythonpath="${SCRIPT_DIR}:${HECUBA_ROOT}/compss" \
   --log_dir="${SCRIPT_DIR}" \
-  esm_simulation.py \
+  "${SCRIPT_DIR}/esm_simulation.py" \
   --model "${MODEL}" \
   --start_dates "${START_DATES}" \
   --processes "${CORES}" \
