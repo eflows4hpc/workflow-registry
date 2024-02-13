@@ -348,32 +348,48 @@ may be useful for others with issues:
 
 #### Running from Alien4Cloud
 
-Firstly, you must have a Alien4Cloud user account and have a vault ID (SSH key) and you have to add it to the `authorized_keys` file on the systems you want to run your workflows.
+Firstly, you must have an Alien4Cloud user account and have a 
+vault ID (SSH key) and you have to add it to the `authorized_keys` 
+file on the systems you want to run your workflows.
 
 ##### How to get a vault ID
 
 ```bash
 docker run ghcr.io/eflows4hpc/hpcwaas-api:main-cli --api_url https://eflows4hpc.bsc.es/waas -u [your alien4cloud user]:***********= ssh_keys key-gen
 ```
-Running this will get you a SSH key ID which will be used in setting up TOSCA application. 
+Running this will get you a SSH key ID which will be used in 
+setting up TOSCA application.
 
 ##### Create your application 
 
-Login to your Alien4Cloud account and create a new application based on an existing topology template. Choose `fesom2 parameterised` as your topology template and proceed creating your application.
+Log in to your Alien4Cloud account and create a new application 
+based on an existing topology template. Choose `fesom2 parameterised` 
+as your topology template and proceed creating your application.
 
 ##### Configuring topology and running your application
 
-Once you create your application. You will see an option to edit your `Environment`. 
+Once you create your application. you will see an option to edit 
+your `Environment`. 
 
-Proceed to edit your environment and navigate to `Prepare next deployment`. Here you will see options to modify your `Topology`, `Inputs`, `Location` etc.
+Proceed to edit your environment and navigate to `Prepare next deployment`. 
+Here you will see options to modify your `Topology`, `Inputs`, `Location` etc.
 
-Feel free to edit your topology if needed. Since we created is based on `fesom2 parameterised` template so it has all the paths and parameters like --start_date --hpc etc pre-configured that you can see in the `arguments` field. The main script that is configured to be launched in this template is `/gpfs/projects/dese28/eflows4hpc/workflow-registry/Pillar_II/esm/src/launch_fesom2.sh` which you can see in the `command` field in your topology. 
+Feel free to edit your topology if needed. Since the application we created is 
+based on `fesom2 parameterised` template so it has all the paths and parameters like 
+`--start_date` `--hpc` etc pre-configured that you can see in the `arguments` field. 
+The main script that is configured to be launched in this template is 
+`/gpfs/projects/dese28/eflows4hpc/workflow-registry/Pillar_II/esm/src/launch_fesom2.sh` 
+which you can see in the `command` field in your topology. 
 
-Save your changes to the topology if any and proceed to `Inputs` and fill the details for `target_host`, `user_id`, `vault_id` etc and finally review & deploy your topology.     
+Save your changes to the topology if any and proceed to `Inputs` and fill the details for 
+`target_host`, `user_id`, `vault_id` etc and finally review & deploy your topology.     
 
-Once you deploy the topology and your topology is valid it will show a success message `Deployed`.
+Once you deploy the topology and your topology is valid it will show a success message 
+`Deployed`.
 
-Now below in the `Workflows` section, you will see a dropdown where you can select `run` and click the `Launch` button to finally launch your workflow. You can see all the execution logs from the `Logs` menu.
+Now below in the `Workflows` section, you will see a dropdown where you can select `run` 
+and click the `Launch` button to finally launch your workflow. You can see all the execution 
+logs from the `Logs` menu.
 
 #### Running with PyCOMPSs and without Hecuba
 
