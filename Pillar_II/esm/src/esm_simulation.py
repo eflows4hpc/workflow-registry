@@ -7,6 +7,7 @@ from importlib import import_module
 from pathlib import Path
 from shutil import rmtree
 from typing import Any, Callable, List, Optional
+import dummy_prune_analysis as pruneObj
 
 from pycompss.api.api import TaskGroup  # type: ignore
 from pycompss.api.api import compss_barrier_group  # type: ignore
@@ -273,6 +274,8 @@ def main() -> None:
         processes_per_node=args.processes_per_node)
 
     logger.info(f"Using eFlows4HPC configuration: {model_config}")
+
+    pruneObj.esm_analysis_prune(args.expid)
 
     _run_esm(
         expid=args.expid,
