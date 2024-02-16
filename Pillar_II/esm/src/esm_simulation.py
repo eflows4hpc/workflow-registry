@@ -247,6 +247,7 @@ def _get_parser():
                         type=int, required=False)
     parser.add_argument('--processes_per_node', dest='processes_per_node', help='Number of cores per node.',
                         type=int, required=False)
+    parser.add_argument('--prune', dest='prune', help='Enable pruning.', action='store_true')
     parser.add_argument('--debug', dest='debug', help='Enable debug (more verbose) information.', action='store_true')
     return parser
 
@@ -275,8 +276,9 @@ def main() -> None:
 
     logger.info(f"Using eFlows4HPC configuration: {model_config}")
 
-    logger.info(f"Starting the ESM analysis prune for {args.expid}...")
-    esm_analysis_prune(args.expid)
+    if args.prune:
+        logger.info(f"Starting the ESM analysis prune for {args.expid}...")
+        esm_analysis_prune(args.expid)
 
     _run_esm(
         expid=args.expid,
