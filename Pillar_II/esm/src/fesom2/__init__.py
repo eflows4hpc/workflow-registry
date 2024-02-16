@@ -29,6 +29,10 @@ class Config(NamedTuple):
     forcing_files_path: Path
     steps_per_day: int
     initial_conditions: str
+    t_pert_min: str
+    t_pert_max: str
+    s_pert_min: str
+    s_pert_max: str
 
 
 def _get_model_config(start_date: str, config_parser: ConfigParser) -> Config:
@@ -56,7 +60,11 @@ def _get_model_config(start_date: str, config_parser: ConfigParser) -> Config:
         forcing_files_path=forcing_files_path,
         output_path=output_path,
         steps_per_day=int(config_parser['fesom2']['steps_per_day']),
-        initial_conditions=config_parser['fesom2']['initial_conditions']
+        initial_conditions=config_parser['fesom2']['initial_conditions'],
+        t_pert_min=config_parser['fesom2']['t_pert_min'],
+        t_pert_max=config_parser['fesom2']['t_pert_max'],
+        s_pert_min=config_parser['fesom2']['s_pert_min'],
+        s_pert_max=config_parser['fesom2']['s_pert_max'],
     )
 
 
@@ -93,7 +101,11 @@ def _namelists(start_date: str, config: ConfigParser):
         'namelist.icepack.tmpl': None,
         'namelist.io.tmpl': None,
         'namelist.oce.tmpl': {
-            'INITIAL_CONDITIONS': model_config.initial_conditions
+            'INITIAL_CONDITIONS': model_config.initial_conditions,
+            'T_PERT_MIN': model_config.t_pert_min,
+            'T_PERT_MAX': model_config.t_pert_max,
+            'S_PERT_MIN': model_config.s_pert_min,
+            'S_PERT_MAX': model_config.s_pert_max
         }
     }
 
