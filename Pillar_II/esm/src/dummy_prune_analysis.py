@@ -1,3 +1,7 @@
+import logging
+from random import randint
+from time import sleep
+
 from pycompss.api.api import TaskGroup  # type: ignore
 from pycompss.api.api import compss_barrier_group  # type: ignore
 from pycompss.api.api import compss_cancel_group  # type: ignore
@@ -7,37 +11,40 @@ from pycompss.api.on_failure import on_failure  # type: ignore
 from pycompss.api.parameter import IN  # type: ignore
 from pycompss.api.task import task  # type: ignore
 from pycompss.runtime.management.classes import Future  # type: ignore
-from hecuba import StorageDict
-import time
-import random
 
-class MetaDictClass(StorageDict):
-   '''
-   @TypeSpec dict <<keyname0:str>,valuename0:str>
-   '''
+"""eFlows4HPC ensemble members pruning."""
 
-def simulation_started(expid):
-    state = MetaDictClass.get_by_alias(expid) 
-    if len([k for k in s.keys()]) > 1:
-        return True
-    else:
-        return False
+CHECK_FOR_PRUNING_SLEEP_TIME_SECS = 5
+"""How long should we sleep for"""
+
+logger = logging.getLogger(__name__)
+
 
 @task(expid=IN)
-def esm_analysis_prune(expid):
-    
+def esm_analysis_prune(expid: str):
+    """This has to be called by PYCOMPSs as analysis.
+
+    Args:
+        expid: The experiment ID.
+    """
+    # N.B.: importing this results in a network query to Hecuba servers,
+    #       which fails if the servers are not available.
+    from hecuba import StorageDict  # type: ignore
+    # This is an infinite-loop, with a sleep time. The execution
+    # must be wrapped in an existing COMPSs or Slurm job, with a
+    # walltime or some limit to control the maximum execution
+    # time, and kill this task.
     while True:
-        started = simulation_started(expid)
-        if started is True:
+        mdc = StorageDict.get_by_alias(expid)
+        if mdc:
             break
-        print("Simulation {expid} not found sleeping +5 seconds")
-        time.sleep(5)
-    
-    mdc = MetaDictClass.get_by_alias(expid)
-    prune_sec = random.randint(10,20) 
-    time.sleep(prune_sec) 
+        logging.info(f"Simulation {expid} not found sleeping +{CHECK_FOR_PRUNING_SLEEP_TIME_SECS} seconds...")
+        sleep(CHECK_FOR_PRUNING_SLEEP_TIME_SECS)
+
+    prune_sec = randint(10, 20)
+    sleep(prune_sec)
     mdc['prune'] = "true"
-    return f"Pruned {expid} after {prune_sec} seconds"
+    logging.info(f"Pruned {expid} after {prune_sec} seconds")
 
 
-# esm_analysis_prune(expid) has to be called by pycompss as analysis         
+__all__ = ['esm_analysis_prune']
