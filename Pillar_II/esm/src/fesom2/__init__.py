@@ -28,6 +28,7 @@ class Config(NamedTuple):
     output_path: Path
     forcing_files_path: Path
     steps_per_day: int
+    initial_conditions: str
 
 
 def _get_model_config(start_date: str, config_parser: ConfigParser) -> Config:
@@ -54,7 +55,8 @@ def _get_model_config(start_date: str, config_parser: ConfigParser) -> Config:
         climatology_path=climatology_path,
         forcing_files_path=forcing_files_path,
         output_path=output_path,
-        steps_per_day=int(config_parser['fesom2']['steps_per_day'])
+        steps_per_day=int(config_parser['fesom2']['steps_per_day']),
+        initial_conditions=config_parser['fesom2']['initial_conditions']
     )
 
 
@@ -90,7 +92,9 @@ def _namelists(start_date: str, config: ConfigParser):
         'namelist.ice.tmpl': None,
         'namelist.icepack.tmpl': None,
         'namelist.io.tmpl': None,
-        'namelist.oce.tmpl': None,
+        'namelist.oce.tmpl': {
+            'INITIAL_CONDITIONS': model_config.initial_conditions
+        }
     }
 
 
