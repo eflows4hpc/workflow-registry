@@ -27,6 +27,7 @@ class Config(NamedTuple):
     climatology_path: Path
     output_path: Path
     forcing_files_path: Path
+    steps_per_day: int
 
 
 def _get_model_config(start_date: str, config_parser: ConfigParser) -> Config:
@@ -52,7 +53,8 @@ def _get_model_config(start_date: str, config_parser: ConfigParser) -> Config:
         mesh_path=mesh_path,
         climatology_path=climatology_path,
         forcing_files_path=forcing_files_path,
-        output_path=output_path
+        output_path=output_path,
+        steps_per_day=int(config_parser['fesom2']['steps_per_day'])
     )
 
 
@@ -78,7 +80,8 @@ def _namelists(start_date: str, config: ConfigParser):
             'START_YEAR': model_config.start_date,
             'MESH_PATH': f'{model_config.mesh_path}{os.sep}',
             'CLIMATOLOGY_PATH': f'{model_config.climatology_path}{os.sep}',
-            'OUTPUT_PATH': f'{model_config.output_path}{os.sep}'
+            'OUTPUT_PATH': f'{model_config.output_path}{os.sep}',
+            'STEPS_PER_DAY': model_config.steps_per_day
         },
         'namelist.cvmix.tmpl': None,
         'namelist.forcing.tmpl': {
