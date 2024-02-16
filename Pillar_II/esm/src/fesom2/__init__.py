@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 class Config(NamedTuple):
     """The model configuration object."""
+    expid: str
     start_date: str
     mesh_path: Path
     climatology_path: Path
@@ -40,11 +41,13 @@ def _get_model_config(start_date: str, config_parser: ConfigParser) -> Config:
     Returns:
         Model configuration.
     """
+    expid = config_parser['runtime']['expid']
     mesh_path = Path(config_parser['fesom2']['mesh_file_path'])
     climatology_path = Path(config_parser['fesom2']['climatology_path'])
     forcing_files_path = Path(config_parser['fesom2']['forcing_files_path'])
     output_path = Path(config_parser['common']['output_dir'], config_parser['runtime']['expid'], start_date)
     return Config(
+        expid=expid,
         start_date=start_date,
         mesh_path=mesh_path,
         climatology_path=climatology_path,
@@ -71,6 +74,7 @@ def _namelists(start_date: str, config: ConfigParser):
     model_config = _get_model_config(start_date, config)
     return {
         'namelist.config.tmpl': {
+            'SIMULATION_ID': model_config.expid,
             'START_YEAR': model_config.start_date,
             'MESH_PATH': f'{model_config.mesh_path}{os.sep}',
             'CLIMATOLOGY_PATH': f'{model_config.climatology_path}{os.sep}',
