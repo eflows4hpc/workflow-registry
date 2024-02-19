@@ -30,12 +30,31 @@ def esm_analysis_prune(expid: str):
     # N.B.: importing this results in a network query to Hecuba servers,
     #       which fails if the servers are not available.
     from hecuba import StorageDict  # type: ignore
+
+    class MetaDictClass(StorageDict):
+        """
+        @TypeSpec dict <<keyname0:str>,valuename0:str>
+        """
+        # N.B. This is used by Hecuba. The ``get_by_alias`` method will
+        #      look for the type specification of both keys and values
+        #      in the docstring of the class. It needs this information
+        #      to instantiate the object and link it with the table
+        #      corresponding in Cassandra. So this method should be
+        #      invoked on a class defined with the ``TypeSpec`` clause,
+        #      not on the generic base class ``StorageDict``. Calling
+        #      it on the generic base class will result in an error
+        #      similar to:
+        #
+        #      RuntimeError: StorageDict: missed specification.
+        #      Type of Primary Key or Column undefined
+
+
     # This is an infinite-loop, with a sleep time. The execution
     # must be wrapped in an existing COMPSs or Slurm job, with a
     # walltime or some limit to control the maximum execution
     # time, and kill this task.
     while True:
-        mdc = StorageDict.get_by_alias(expid)
+        mdc = MetaDictClass.get_by_alias(expid)
         if mdc:
             break
         logging.info(f"Simulation {expid} not found sleeping +{CHECK_FOR_PRUNING_SLEEP_TIME_SECS} seconds...")
