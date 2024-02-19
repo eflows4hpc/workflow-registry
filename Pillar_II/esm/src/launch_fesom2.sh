@@ -11,6 +11,7 @@ MODEL="fesom2"
 
 HPC=""
 DEBUG=""
+PRUNE=""
 CORES=0
 CORES_PER_NODE=0
 START_DATES=""
@@ -18,7 +19,7 @@ QOS=""
 
 # Parse options. Note that options may be followed by one colon to indicate
 # they have a required argument.
-if ! options=$(getopt --name "$(basename "$0")" --options hdc:q: --longoptions help,debug,cores:,start_dates:,qos:,hpc:,cores_per_node: -- "$@"); then
+if ! options=$(getopt --name "$(basename "$0")" --options hdc:q: --longoptions help,debug,prune,cores:,start_dates:,qos:,hpc:,cores_per_node: -- "$@"); then
   # Error, getopt will put out a message for us
   exit 1
 fi
@@ -38,6 +39,9 @@ while [ $# -gt 0 ]; do
     ;;
   -d | --debug)
     DEBUG="--debug"
+    ;;
+  --prune)
+    PRUNE="--prune"
     ;;
   # Options with required arguments, an additional shift is required
   -c | --cores)
@@ -164,4 +168,5 @@ enqueue_compss \
   --processes_per_node "${CORES_PER_NODE}" \
   --expid "${EXP_ID}" \
   --config "${SCRIPT_DIR}/fesom2/esm_ensemble.conf" \
-  "${DEBUG}"
+  "${DEBUG}" \
+  "${PRUNE}"
