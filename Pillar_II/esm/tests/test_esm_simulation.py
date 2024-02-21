@@ -1,6 +1,8 @@
+from string import ascii_letters
+
 from pytest import raises
 
-from esm_simulation import main
+from esm_simulation import main, _create_expid
 
 
 def test_esm_init(mocker, prepare_esm_simulation):
@@ -25,3 +27,14 @@ def test_main_prints_help(capsys):
         main()
 
     assert 'usage: esm_simulation' in str(capsys.readouterr())
+
+
+def test_create_expid():
+    expid = _create_expid()
+
+    # 1 char, 5 digits
+    assert len(expid) == 6
+
+    assert expid[0] in ascii_letters
+    number = int(expid[1:])
+    assert number > 0
