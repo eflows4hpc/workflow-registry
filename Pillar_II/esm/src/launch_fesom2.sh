@@ -116,6 +116,14 @@ NODE_ALLOCATION=$(get_nodes_allocated "${CORES}" "${CORES_PER_NODE}" "${NUMBER_O
 
 echo -e "\nLaunch arguments:\n"
 
+# Sample invocation of this script:
+#
+# ./launch.sh --hpc mn4 --cores 288 --qos debug --start_dates "1990 1991"
+
+# --expid is now optional. Python does the same thing.
+EXP_ID=$(get_expid)
+
+echo "EXPID           : ${EXP_ID}"
 echo "MODEL           : ${MODEL}"
 echo "HPC             : ${HPC}"
 echo "CORES           : ${CORES}"
@@ -123,13 +131,6 @@ echo "CORES PER NODE  : ${CORES_PER_NODE}"
 echo "NODES           : ${NODE_ALLOCATION}"
 echo "QOS             : ${QOS}"
 echo "START DATES     : (${NUMBER_OF_START_DATES}) ${START_DATES}"
-
-# Sample invocation of this script:
-#
-# ./launch.sh --hpc mn4 --cores 288 --qos debug --start_dates "1990 1991"
-
-# --expid is now optional. Python does the same thing.
-EXP_ID=get_expid
 
 # NOTE: For the container this may be necessary?
 # --env_script="${SCRIPT_DIR}/${MODEL}/env/${HPC}.sh" \
