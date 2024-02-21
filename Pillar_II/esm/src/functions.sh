@@ -99,3 +99,14 @@ function get_nodes_allocated() {
   NODE_ALLOCATION="$(((TOTAL_CORES_NEEDED + CORES_PER_NODE - 1) / CORES_PER_NODE))"
   echo "${NODE_ALLOCATION}"
 }
+
+# Get a new, 6-length, alpha-numeric, experiment ID.
+# Starts with a character, followed by 5 digits.
+# Follows no special order when creating ID's.
+# For example: a12345, i88766, b00022.
+function get_expid() {
+  ALPHABET="abcdefghijklmnopqrstuvwxyz"
+  EXPID_ALPHA="${ALPHABET:$(( RANDOM % ${#ALPHABET} )):1}"
+  EXPID_NUMBER="$(printf "%0d\n" $((1 + RANDOM % 100000)))"
+  echo "${EXPID_ALPHA}${EXPID_NUMBER}"
+}
