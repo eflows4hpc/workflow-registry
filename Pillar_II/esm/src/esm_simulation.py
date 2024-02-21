@@ -6,8 +6,8 @@ from enum import Enum, unique
 from importlib import import_module
 from pathlib import Path
 from shutil import rmtree
+from string import ascii_letters
 from typing import Any, Callable, List, Optional
-from dummy_prune_analysis import esm_analysis_prune
 
 from pycompss.api.api import TaskGroup  # type: ignore
 from pycompss.api.api import compss_barrier_group  # type: ignore
@@ -19,6 +19,8 @@ from pycompss.api.parameter import IN  # type: ignore
 from pycompss.api.task import task  # type: ignore
 from pycompss.runtime.management.classes import Future  # type: ignore
 
+from dummy_prune_analysis import esm_analysis_prune
+
 logging.basicConfig()
 logging.root.setLevel(logging.INFO)
 logging.basicConfig(level=logging.NOTSET)
@@ -29,7 +31,7 @@ logger = logging.getLogger(__name__)
 # these dynamically. Their type definitions are below:
 
 init_top_working_dir_fn = Callable[[Path, int, List[str], ConfigParser], None]
-init_output_dir_fn = Callable[[Path, int, List[str]], None]
+init_output_dir_fn = Callable[[Path, int, List[str], str], None]
 esm_simulation_fn = Callable[[str, str, str, str, str, str], Future]  # int
 esm_member_checkpoint_fn = Callable[[str, ConfigParser, Any], Future]  # bool
 
@@ -118,10 +120,12 @@ def _init_output_directory(
         config: eFlows4HPC configuration.
     """
     model_module = import_module(f"{config['runtime']['model']}")
+    expid = config['runtime']['expid']
     fn: init_output_dir_fn = model_module.init_output_dir
     fn(output_dir,
        access_rights,
-       start_dates)
+       start_dates,
+       expid)
 
 
 @task(expid=IN, model=IN, config_parser=IN)
@@ -252,6 +256,12 @@ def _get_parser():
     return parser
 
 
+def _create_expid() -> str:
+    expid_alpha = random.choice(ascii_letters)
+    expid_numeric = str(random.randint(10000, 99999))
+    return f"{expid_alpha}{expid_numeric}"
+
+
 def main() -> None:
     args = _get_parser().parse_args()
 
@@ -260,7 +270,7 @@ def main() -> None:
 
     # If no expid provided, we generate a random 6-digit ID.
     if args.expid is None or args.expid.strip() == '':
-        args.expid = str(random.randint(100000, 999999))
+        args.expid = _create_expid()
 
     logger.info(f"Running simulation for model: {args.model}")
 
