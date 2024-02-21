@@ -129,7 +129,7 @@ echo "START DATES     : (${NUMBER_OF_START_DATES}) ${START_DATES}"
 # ./launch.sh --hpc mn4 --cores 288 --qos debug --start_dates "1990 1991"
 
 # --expid is now optional. Python does the same thing.
-EXP_ID=$(printf "%06d\n" $((1 + RANDOM % 100000)))
+EXP_ID=get_expid
 
 # NOTE: For the container this may be necessary?
 # --env_script="${SCRIPT_DIR}/${MODEL}/env/${HPC}.sh" \

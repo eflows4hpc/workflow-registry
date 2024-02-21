@@ -124,3 +124,8 @@ setup() {
   run get_nodes_allocated "144" "48" "4"
   assert_output "12"
 }
+
+@test "get_expid returns a valid, 6-chars, experiment ID" {
+  expid=$(get_expid)
+  assert_equal "6" ${#expid}
+}
