@@ -192,13 +192,14 @@ def init_top_working_dir(
 def init_output_dir(
         output_dir: Path,
         access_rights: int,
-        start_dates: List[str]) -> None:
+        start_dates: List[str],
+        expid: str) -> None:
     """Initialize the FESOM2 model output directory.
 
     This directory exists somewhere like /data/output-dir/expid/start-dates...
 
     The output directory will be created if it does not yet exist. We will place
-    the ``fesom.clock`` file there with the respective date written inside.
+    the ``${expid}.clock`` file there with the respective date written inside.
     https://fesom2.readthedocs.io/en/latest/getting_started/getting_started.html#preparing-the-run
 
     Args:
@@ -222,8 +223,8 @@ def init_output_dir(
             logger.debug(f"Creating member directory: {member_output_dir}")
             member_output_dir.mkdir(mode=access_rights)
 
-        logger.info("Creating clock file...")
-        with open(member_output_dir / "fesom.clock", "w") as fclock:
+        logger.info(f"Creating clock file {expid}.clock...")
+        with open(member_output_dir / f"{expid}.clock", "w") as fclock:
             fclock.write(f"0 1 {start_date}\r\n")
             fclock.write(f"0 1 {start_date}")
 
