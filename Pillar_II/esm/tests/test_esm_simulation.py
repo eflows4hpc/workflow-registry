@@ -12,6 +12,7 @@ def test_esm_init(mocker, prepare_esm_simulation):
             'esm_simulation',
             '--debug',
             '--expid', '123456',
+            '--start_dates', '1948',
             '--model=fesom2',
             '--processes', '2',
             '--processes_per_node', '48',

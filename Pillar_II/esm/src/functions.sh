@@ -107,6 +107,6 @@ function get_nodes_allocated() {
 function get_expid() {
   ALPHABET="abcdefghijklmnopqrstuvwxyz"
   EXPID_ALPHA="${ALPHABET:$(( RANDOM % ${#ALPHABET} )):1}"
-  EXPID_NUMBER="$(printf "%0d\n" $((1 + RANDOM % 100000)))"
+  EXPID_NUMBER="$(shuf -i 10000-99999 -n 1)"
   echo "${EXPID_ALPHA}${EXPID_NUMBER}"
 }

@@ -16,10 +16,11 @@ CORES=0
 CORES_PER_NODE=0
 START_DATES=""
 QOS=""
+MEMBERS=1
 
 # Parse options. Note that options may be followed by one colon to indicate
 # they have a required argument.
-if ! options=$(getopt --name "$(basename "$0")" --options hdc:q: --longoptions help,debug,prune,cores:,start_dates:,qos:,hpc:,cores_per_node: -- "$@"); then
+if ! options=$(getopt --name "$(basename "$0")" --options hdc:q: --longoptions help,debug,prune,cores:,start_dates:,members:,qos:,hpc:,cores_per_node: -- "$@"); then
   # Error, getopt will put out a message for us
   exit 1
 fi
@@ -27,7 +28,7 @@ fi
 eval set -- "${options}"
 
 function usage() {
-  echo "Usage: $0 --hpc <mn4|levante> -c|--cores <CORES> --cores_per_node <CORES_PER_NODE> --start_dates <YYYY,YYYY> [-q|--qos <QUEUE>] [-d|--debug] [-h|--help]" 1>&2
+  echo "Usage: $0 --hpc <mn4|levante|local> -c|--cores <CORES> --cores_per_node <CORES_PER_NODE> --start_dates <YYYY,YYYY> --members <MEMBERS> [-q|--qos <QUEUE>] [-d|--debug] [-h|--help]" 1>&2
   exit 1
 }
 
@@ -52,6 +53,10 @@ while [ $# -gt 0 ]; do
     START_DATES="$2"
     shift
     ;;
+  --members)
+    MEMBERS="$2"
+    shift
+    ;;
   -q | --qos)
     QOS="$2"
     shift
@@ -61,7 +66,7 @@ while [ $# -gt 0 ]; do
     shift
     ;;
   --cores_per_node)
-    CORES_PER_NODE="${2}"
+    CORES_PER_NODE="$2"
     shift
     ;;
   --)
@@ -100,6 +105,11 @@ if [ -z "${START_DATES}" ]; then
   usage
 fi
 
+if [ "${MEMBERS}" -le 0 ]; then
+  echo -e "Number of ensemble members must be equal or greater than 1\n"
+  usage
+fi
+
 printf "Launching %s eFlows4HPC ESM experiment...\U1F680\n" "${MODEL}"
 
 # Hecuba configuration
@@ -131,6 +141,7 @@ echo "CORES PER NODE  : ${CORES_PER_NODE}"
 echo "NODES           : ${NODE_ALLOCATION}"
 echo "QOS             : ${QOS}"
 echo "START DATES     : (${NUMBER_OF_START_DATES}) ${START_DATES}"
+echo "MEMBERS         : ${MEMBERS}"
 
 # NOTE: For the container this may be necessary?
 # --env_script="${SCRIPT_DIR}/${MODEL}/env/${HPC}.sh" \
@@ -165,6 +176,7 @@ enqueue_compss \
   "${SCRIPT_DIR}/esm_simulation.py" \
   --model "${MODEL}" \
   --start_dates "${START_DATES}" \
+  --members "${MEMBERS}" \
   --processes "${CORES}" \
   --processes_per_node "${CORES_PER_NODE}" \
   --expid "${EXP_ID}" \
