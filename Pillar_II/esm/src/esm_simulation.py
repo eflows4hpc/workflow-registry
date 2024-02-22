@@ -315,10 +315,6 @@ def main() -> None:
 
     logger.info(f"Using eFlows4HPC configuration: {model_config}")
 
-    if args.prune:
-        logger.info(f"Starting the ESM analysis prune for {args.expid}...")
-        esm_analysis_prune(args.expid)
-
     _run_esm(
         expid=args.expid,
         model=args.model,
