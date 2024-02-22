@@ -29,6 +29,13 @@ def esm_analysis_prune(expid: str):
     """
     # N.B.: importing this results in a network query to Hecuba servers,
     #       which fails if the servers are not available.
+
+    # TODO: Suvi: call the AI code here
+    member = int(expid.split('_')[1])
+    if member != 2:
+        logging.info(f"We only prune the ensemble member #2!")
+        return
+
     from hecuba import StorageDict  # type: ignore
 
     class MetaDictClass(StorageDict):

@@ -173,7 +173,7 @@ def esm_member_disposal(start_date: str, member: int, top_working_dir: Path, out
         rmtree(start_date_path)
 
 
-def _run_esm(*, expid: str, model: str, config_parser: ConfigParser) -> None:
+def _run_esm(*, expid: str, model: str, prune: bool, config_parser: ConfigParser) -> None:
     # This is the only step that is common to the models. But we can move
     # that to a common module and call the model's code directly instead
     # if needed too. For now this is good enough.
@@ -205,6 +205,12 @@ def _run_esm(*, expid: str, model: str, config_parser: ConfigParser) -> None:
         for member_idx in range(1, ensemble_members + 1):
             member = str(member_idx)
             task_group = f"{expid}_{start_date}_{member}"
+
+            if prune:
+                member_expid = f"{expid}_{member}"
+                logger.info(f"Starting the ESM analysis prune for {member_expid}...")
+                esm_analysis_prune(member_expid)
+
             with TaskGroup(task_group, implicit_barrier=False):
                 # Launch each SIM, create an implicit dependence by passing the result to the next task (checkpoint).
                 number_simulations = int(runtime_config_parser['common']['chunks'])
@@ -316,6 +322,7 @@ def main() -> None:
     _run_esm(
         expid=args.expid,
         model=args.model,
+        prune=args.prune,
         config_parser=config_parser)
 
     logger.info("All done. Bye!")

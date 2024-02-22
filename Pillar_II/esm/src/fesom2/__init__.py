@@ -89,9 +89,11 @@ def _namelists(start_date: str, member: int, config: ConfigParser):
 
     logger.info(f"Member [{member}] got temperatures [{temp_min}, {temp_max}] and salinity [{sal_min, sal_max}]")
 
+    member_expid = f'{model_config.expid}_{member}'
+
     return {
         'namelist.config.tmpl': {
-            'SIMULATION_ID': model_config.expid,
+            'SIMULATION_ID': member_expid,
             'START_YEAR': model_config.start_date,
             'MESH_PATH': f'{model_config.mesh_path}{os.sep}',
             'CLIMATOLOGY_PATH': f'{model_config.climatology_path}{os.sep}',
@@ -242,8 +244,10 @@ def init_output_dir(
                 logger.debug(f"Creating member directory: {member_output_dir}")
                 member_output_dir.mkdir(mode=access_rights, parents=True)
 
-            logger.info(f"Creating clock file {expid}.clock...")
-            with open(member_output_dir / f"{expid}.clock", "w") as fclock:
+            member_expid = f'{expid}_{member}'
+
+            logger.info(f"Creating clock file {member_expid}.clock...")
+            with open(member_output_dir / f"{member_expid}.clock", "w") as fclock:
                 fclock.write(f"0 1 {start_date}\r\n")
                 fclock.write(f"0 1 {start_date}")
 
