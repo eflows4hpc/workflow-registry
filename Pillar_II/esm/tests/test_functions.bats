@@ -125,7 +125,9 @@ setup() {
   assert_output "12"
 }
 
+## expids
+
 @test "get_expid returns a valid, 6-chars, experiment ID" {
   expid=$(get_expid)
-  assert_equal "6" ${#expid}
+  assert_equal ${#expid} "6"
 }

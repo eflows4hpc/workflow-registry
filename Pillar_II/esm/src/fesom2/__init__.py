@@ -1,5 +1,6 @@
 import logging
 import os
+import random
 import shutil
 from configparser import ConfigParser
 from itertools import chain
@@ -29,13 +30,13 @@ class Config(NamedTuple):
     forcing_files_path: Path
     steps_per_day: int
     initial_conditions: str
-    t_pert_min: str
-    t_pert_max: str
-    s_pert_min: str
-    s_pert_max: str
+    # t_pert_min: str
+    # t_pert_max: str
+    # s_pert_min: str
+    # s_pert_max: str
 
 
-def _get_model_config(start_date: str, config_parser: ConfigParser) -> Config:
+def _get_model_config(start_date: str, member: int, config_parser: ConfigParser) -> Config:
     """Get the configuration for this specific model.
 
     It uses the eFlows4HPC configuration to build the configuration for
@@ -51,7 +52,7 @@ def _get_model_config(start_date: str, config_parser: ConfigParser) -> Config:
     mesh_path = Path(config_parser['fesom2']['mesh_file_path'])
     climatology_path = Path(config_parser['fesom2']['climatology_path'])
     forcing_files_path = Path(config_parser['fesom2']['forcing_files_path'])
-    output_path = Path(config_parser['common']['output_dir'], config_parser['runtime']['expid'], start_date)
+    output_path = Path(config_parser['common']['output_dir']) / config_parser['runtime']['expid'] / start_date / str(member)
     return Config(
         expid=expid,
         start_date=start_date,
@@ -61,14 +62,10 @@ def _get_model_config(start_date: str, config_parser: ConfigParser) -> Config:
         output_path=output_path,
         steps_per_day=int(config_parser['fesom2']['steps_per_day']),
         initial_conditions=config_parser['fesom2']['initial_conditions'],
-        t_pert_min=config_parser['fesom2']['t_pert_min'],
-        t_pert_max=config_parser['fesom2']['t_pert_max'],
-        s_pert_min=config_parser['fesom2']['s_pert_min'],
-        s_pert_max=config_parser['fesom2']['s_pert_max'],
     )
 
 
-def _namelists(start_date: str, config: ConfigParser):
+def _namelists(start_date: str, member: int, config: ConfigParser):
     """Get the namelists used for FESOM2.
 
     N.B.: Python's pathlib strips trailing slashes from paths. This causes issues
@@ -83,7 +80,15 @@ def _namelists(start_date: str, config: ConfigParser):
     Returns:
         A dictionary with the name of the namelist, and an optional dictionary of values to process the namelist.
     """
-    model_config = _get_model_config(start_date, config)
+    model_config = _get_model_config(start_date, member, config)
+    temp_min = random.uniform(-1.0, 2.0)
+    temp_max = random.uniform(2.0, 4.0)
+    # N.B.: Salinity must be above 1.
+    sal_min = random.uniform(1.5, 2.5)
+    sal_max = random.uniform(3.0, 4.0)
+
+    logger.info(f"Member [{member}] got temperatures [{temp_min}, {temp_max}] and salinity [{sal_min, sal_max}]")
+
     return {
         'namelist.config.tmpl': {
             'SIMULATION_ID': model_config.expid,
@@ -102,16 +107,20 @@ def _namelists(start_date: str, config: ConfigParser):
         'namelist.io.tmpl': None,
         'namelist.oce.tmpl': {
             'INITIAL_CONDITIONS': model_config.initial_conditions,
-            'T_PERT_MIN': model_config.t_pert_min,
-            'T_PERT_MAX': model_config.t_pert_max,
-            'S_PERT_MIN': model_config.s_pert_min,
-            'S_PERT_MAX': model_config.s_pert_max
+            'T_PERT_MIN': temp_min,
+            'T_PERT_MAX': temp_max,
+            'S_PERT_MIN': sal_min,
+            'S_PERT_MAX': sal_max
         }
     }
 
 
-def _esm_ensemble_generate_namelists(start_date: str, config: ConfigParser, member_top_working_dir: Path) -> None:
-    namelists = _namelists(start_date, config)
+def _esm_ensemble_generate_namelists(
+        start_date: str,
+        member: int,
+        config: ConfigParser,
+        member_top_working_dir: Path) -> None:
+    namelists = _namelists(start_date, member, config)
     for namelist_file_name, values in namelists.items():
         namelist_file = Path(__file__).parent.resolve() / 'namelist_templates' / namelist_file_name
         destination_file = member_top_working_dir / namelist_file.stem
@@ -135,6 +144,7 @@ def init_top_working_dir(
         top_working_dir: Path,
         access_rights: int,
         start_dates: List[str],
+        members: int,
         config: ConfigParser) -> None:
     """Initialize the FESOM2 model top working directory.
 
@@ -148,6 +158,7 @@ def init_top_working_dir(
         top_working_dir: The model top working directory, where files needed to run the model reside for each member.
         access_rights: Default file mode to create new file system entries (e.g. 0x755)
         start_dates: The list of start dates for the model run.
+        members: The number of members for the model run.
         config: eFlows4HPC configuration.
     """
     fesom_exe = Path(config['fesom2']['fesom_binary_path'])
@@ -164,35 +175,38 @@ def init_top_working_dir(
     logger.info(f"Initializing top working directory: {top_working_dir}")
 
     for start_date in start_dates:
-        logger.info(f"=== Start date {start_date}")
-        member_top_working_dir = top_working_dir / start_date
-        if not member_top_working_dir.exists():
-            logger.debug(f"Creating member directory: {member_top_working_dir}")
-            member_top_working_dir.mkdir(mode=access_rights)
+        for member in range(1, members + 1):
+            logger.info(f"=== Start date {start_date}")
+            logger.info(f"=== Member {member}")
+            member_top_working_dir = top_working_dir / start_date / str(member)
+            if not member_top_working_dir.exists():
+                logger.debug(f"Creating member directory: {member_top_working_dir}")
+                member_top_working_dir.mkdir(mode=access_rights, parents=True)
 
-        fesom_x_link = member_top_working_dir / "fesom.x"
-        if fesom_x_link.is_file():
-            fesom_x_link.unlink()
-        logger.info(f"Creating symlink for FESOM2 executable, from [{fesom_exe}] to [{fesom_x_link}]")
-        fesom_x_link.symlink_to(fesom_exe)
+            fesom_x_link = member_top_working_dir / "fesom.x"
+            if fesom_x_link.is_file():
+                fesom_x_link.unlink()
+            logger.info(f"Creating symlink for FESOM2 executable, from [{fesom_exe}] to [{fesom_x_link}]")
+            fesom_x_link.symlink_to(fesom_exe)
 
-        source_directory_datamodels = Path(config['fesom2']['fesom_hecuba_datamodel'])
-        logger.info(f"Copying Hecuba YAML datamodel files from [{source_directory_datamodels}] "
-                    f"to the top working directory (works with .yml. YAml, .yaml, etc.)")
-        # Find any .yaml, .yml, .YAML, etc., files.
-        for source_filename in chain(
-                source_directory_datamodels.rglob('*.[yY][mM][lL]'),
-                source_directory_datamodels.rglob('*.[yY][aA][mM][lL]')):
-            shutil.copy(source_filename, member_top_working_dir)
+            source_directory_datamodels = Path(config['fesom2']['fesom_hecuba_datamodel'])
+            logger.info(f"Copying Hecuba YAML datamodel files from [{source_directory_datamodels}] "
+                        f"to the top working directory (works with .yml. YAml, .yaml, etc.)")
+            # Find any .yaml, .yml, .YAML, etc., files.
+            for source_filename in chain(
+                    source_directory_datamodels.rglob('*.[yY][mM][lL]'),
+                    source_directory_datamodels.rglob('*.[yY][aA][mM][lL]')):
+                shutil.copy(source_filename, member_top_working_dir)
 
-        logger.info("Generating Fortran namelists...")
-        _esm_ensemble_generate_namelists(start_date, config, member_top_working_dir)
+            logger.info("Generating Fortran namelists...")
+            _esm_ensemble_generate_namelists(start_date, member, config, member_top_working_dir)
 
 
 def init_output_dir(
         output_dir: Path,
         access_rights: int,
         start_dates: List[str],
+        members: int,
         expid: str) -> None:
     """Initialize the FESOM2 model output directory.
 
@@ -206,6 +220,8 @@ def init_output_dir(
         output_dir: The model output directory, where files produced by each ensemble model run reside.
         access_rights: Default file mode to create new file system entries (e.g. 0x755)
         start_dates: The list of start dates for the model run.
+        members: The number of members for the model run.
+        expid: Experiment ID.
     """
     if output_dir.exists() and not output_dir.is_dir():
         raise ValueError(f"Invalid configuration directory (expected existing directory): {str(output_dir)}")
@@ -217,16 +233,19 @@ def init_output_dir(
     logger.info(f"Initializing output directory: {output_dir}")
 
     for start_date in start_dates:
-        logger.info(f"=== Start date {start_date}")
-        member_output_dir = output_dir / start_date
-        if not member_output_dir.exists():
-            logger.debug(f"Creating member directory: {member_output_dir}")
-            member_output_dir.mkdir(mode=access_rights)
+        for member_idx in range(1, members + 1):
+            member = str(member_idx)
+            logger.info(f"=== Start date {start_date}")
+            logger.info(f"=== Member {member}")
+            member_output_dir = output_dir / start_date / member
+            if not member_output_dir.exists():
+                logger.debug(f"Creating member directory: {member_output_dir}")
+                member_output_dir.mkdir(mode=access_rights, parents=True)
 
-        logger.info(f"Creating clock file {expid}.clock...")
-        with open(member_output_dir / f"{expid}.clock", "w") as fclock:
-            fclock.write(f"0 1 {start_date}\r\n")
-            fclock.write(f"0 1 {start_date}")
+            logger.info(f"Creating clock file {expid}.clock...")
+            with open(member_output_dir / f"{expid}.clock", "w") as fclock:
+                fclock.write(f"0 1 {start_date}\r\n")
+                fclock.write(f"0 1 {start_date}")
 
 
 # TODO: not used?
