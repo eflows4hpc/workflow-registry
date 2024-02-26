@@ -33,9 +33,12 @@ def esm_analysis_prune(expid: str):
     # TODO: Suvi: call the AI code here
     member = int(expid.split('_')[1])
     if member != 2:
-        logging.info(f"We only prune the ensemble member #2!")
+        logging.info("We only prune the ensemble member #2!")
         return
 
+    logging.info("Pruning ensemble member #2!")
+
+    logging.info("Importing Hecuba")
     from hecuba import StorageDict  # type: ignore
 
     class MetaDictClass(StorageDict):
@@ -61,14 +64,17 @@ def esm_analysis_prune(expid: str):
     # walltime or some limit to control the maximum execution
     # time, and kill this task.
     while True:
-        mdc = MetaDictClass.get_by_alias(expid)
-        if mdc:
+        logging.info(f"MetaDictClass.get_by_alias('{expid}')")
+        try:
+            mdc = MetaDictClass.get_by_alias(expid)
             break
-        logging.info(f"Simulation {expid} not found sleeping +{CHECK_FOR_PRUNING_SLEEP_TIME_SECS} seconds...")
-        sleep(CHECK_FOR_PRUNING_SLEEP_TIME_SECS)
+        except RuntimeError:
+            logging.info(f"Simulation {expid} not found sleeping +{CHECK_FOR_PRUNING_SLEEP_TIME_SECS} seconds...")
+            sleep(CHECK_FOR_PRUNING_SLEEP_TIME_SECS)
 
     prune_sec = randint(10, 20)
     sleep(prune_sec)
+    logging.info("Setting prune to TRUE!")
     mdc['prune'] = "true"
     logging.info(f"Pruned {expid} after {prune_sec} seconds")
 
