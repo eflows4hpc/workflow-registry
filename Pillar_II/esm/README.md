@@ -114,12 +114,16 @@ $ ./launch_fesom2.sh \
         --qos debug \
         --start_dates "1948,1958" \
         --cores_per_node 48 \
-        --cores 48
+        --cores 48 \
+        --members 1
 ```
 
 The simulation Python script randomly creates an `expid` with
-`8` digits (e.g. `12345678`). But you can also pass a fixed `expid`
-if you prefer.
+`6` characters (e.g. `a12345`). But you can also pass a fixed `expid`
+if you prefer. The generated `expid` always starts with a character,
+followed by 5 digits. The character is important to avoid Cassandra
+(Hecuba) from trying to convert it into an integer, which causes the
+simulation to fail.
 
 The output of the shell execution will contain a Slurm Job ID.
 You can check the COMPSs directory with the `expid` name. And
@@ -136,8 +140,21 @@ $ python esm_simulation.py \
         --model fesom2 \
         --config ~/esm_ensemble.conf \
         --start_dates="1948,1958,1968" \
-        --debug
+        -- members 1 \
+        --debug \
+        --prune
 ```
+
+#### Pruning
+
+When you enable pruning, with the `--prune` flag, the workflow will have
+a new PyCOMPSs task. In this case, **you must allocate an extra node,
+as otherwise Hecuba and PyCOMPSs will compete for resources and the workflow
+will stall in the pruning, without starting FESOM2 in the simulation**.
+
+The pruning task inspects each members data, dynamically, and modifies a column
+in the Cassandra database for that member. The next time FESOM2 looks at the column,
+it will understand it must stop.
 
 ### AWICM3
 
