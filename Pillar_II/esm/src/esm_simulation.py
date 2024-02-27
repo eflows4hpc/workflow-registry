@@ -193,6 +193,15 @@ def _run_esm(*, expid: str, model: str, prune: bool, config_parser: ConfigParser
     processes = runtime_config_parser['pycompss']['processes']
     processes_per_node = runtime_config_parser['pycompss']['processes_per_node']
 
+    # N.B.: Apparently giving all nodes to mpirun/FESOM2 results in resource
+    #       starvation as COMPSs will be trying to run a task to prune as well.
+    #       Thus, we always allocate one node less to leave it for COMPSs and
+    #       Hecuba.
+    cores_in_one_node = int(processes_per_node)
+    cores_requested = int(processes)
+    if cores_requested > cores_in_one_node:
+        processes = str(cores_requested - cores_in_one_node)
+
     # This is where we delegate the ESM execution to a model's module code
     # (e.g. FESOM2, AWICM3, etc.).
     ensemble_start_dates = runtime_config_parser['common']['ensemble_start_dates'].split(",")
@@ -206,15 +215,13 @@ def _run_esm(*, expid: str, model: str, prune: bool, config_parser: ConfigParser
             member = str(member_idx)
             task_group = f"{expid}_{start_date}_{member}"
 
+            if prune:
+                esm_analysis_prune(expid, member_idx)
+
             with TaskGroup(task_group, implicit_barrier=False):
                 # Launch each SIM, create an implicit dependence by passing the result to the next task (checkpoint).
                 number_simulations = int(runtime_config_parser['common']['chunks'])
                 logger.info(f"Total of chunks configured: {number_simulations}")
-
-                if prune:
-                    member_expid = f"{expid}_{member}"
-                    logger.info(f"Starting the ESM analysis prune for {member_expid}...")
-                    esm_analysis_prune(member_expid)
 
                 for sim in range(1, number_simulations + 1):
                     working_dir_exe = top_working_dir / start_date / member

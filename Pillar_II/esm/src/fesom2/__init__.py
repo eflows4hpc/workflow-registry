@@ -324,7 +324,7 @@ def esm_simulation(
             StdIOStream: STDOUT
         },
         working_dir_exe={
-            Type: INOUT,
+            Type: IN,
             Prefix: "#"
         },
         returns=int)
