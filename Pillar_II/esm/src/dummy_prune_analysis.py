@@ -17,26 +17,32 @@ from pycompss.runtime.management.classes import Future  # type: ignore
 CHECK_FOR_PRUNING_SLEEP_TIME_SECS = 5
 """How long should we sleep for"""
 
+# TODO: remove me later
+MEMBERS_PRUNED = [2]
+
 logger = logging.getLogger(__name__)
 
 
-@task(expid=IN)
-def esm_analysis_prune(expid: str):
+@on_failure(management='IGNORE', returns=0)
+@task(expid=IN, member=IN, returns=bool, time_out=480)
+def esm_analysis_prune(expid: str, member: int) -> bool:
     """This has to be called by PYCOMPSs as analysis.
 
     Args:
         expid: The experiment ID.
+        member: The ensemble member.
+    Returns:
+        bool: True if the ensemble member was pruned.
     """
     # N.B.: importing this results in a network query to Hecuba servers,
     #       which fails if the servers are not available.
 
     # TODO: Suvi: call the AI code here
-    member = int(expid.split('_')[1])
-    if member != 2:
-        logging.info("We only prune the ensemble member #2!")
-        return
+    if member not in MEMBERS_PRUNED:
+        logging.info(f"We only prune the ensemble members #{str(MEMBERS_PRUNED)}!")
+        return False
 
-    logging.info("Pruning ensemble member #2!")
+    logging.info(f"Pruning ensemble member #{str(member)}!")
 
     logging.info("Importing Hecuba")
     from hecuba import StorageDict  # type: ignore
@@ -58,25 +64,28 @@ def esm_analysis_prune(expid: str):
         #      RuntimeError: StorageDict: missed specification.
         #      Type of Primary Key or Column undefined
 
-
     # This is an infinite-loop, with a sleep time. The execution
     # must be wrapped in an existing COMPSs or Slurm job, with a
     # walltime or some limit to control the maximum execution
     # time, and kill this task.
+    expid_member = f'{expid}_{str(member)}'
     while True:
-        logging.info(f"MetaDictClass.get_by_alias('{expid}')")
+        logging.info(f"MetaDictClass.get_by_alias('{expid_member}')")
         try:
-            mdc = MetaDictClass.get_by_alias(expid)
+            mdc = MetaDictClass.get_by_alias(expid_member)
             break
         except RuntimeError:
-            logging.info(f"Simulation {expid} not found sleeping +{CHECK_FOR_PRUNING_SLEEP_TIME_SECS} seconds...")
+            logging.info(
+                f"Simulation member {expid_member} not found sleeping +{CHECK_FOR_PRUNING_SLEEP_TIME_SECS} seconds...")
             sleep(CHECK_FOR_PRUNING_SLEEP_TIME_SECS)
 
     prune_sec = randint(10, 20)
     sleep(prune_sec)
     logging.info("Setting prune to TRUE!")
     mdc['prune'] = "true"
-    logging.info(f"Pruned {expid} after {prune_sec} seconds")
+    logging.info(f"Pruned member [{str(member)}] from experiment [{expid}] after {prune_sec} seconds")
+
+    return True
 
 
 __all__ = ['esm_analysis_prune']
