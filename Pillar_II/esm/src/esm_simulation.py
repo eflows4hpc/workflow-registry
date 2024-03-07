@@ -44,7 +44,7 @@ class Model(str, Enum):
 
 
 def _get_config(*, model_config: Path, model: str, start_dates: Optional[str], members: Optional[int],
-                processes: Optional[str], processes_per_node: Optional[str]) -> ConfigParser:
+                processes: Optional[str], processes_per_node: Optional[str], mesh_file_path: Optional[Path], forcing_files_path: Optional[Path], climatology_path: Optional[Path], output_dir: Optional[Path], top_working_dir: Optional[Path] ) -> ConfigParser:
     """Get the eFlows4HPC configuration object.
 
     Args:
@@ -54,6 +54,11 @@ def _get_config(*, model_config: Path, model: str, start_dates: Optional[str], m
         members: Number of ensemble members.
         processes: Number of cores.
         processes_per_node: Number of processes per node.
+        mesh_file_path: Path to the mesh file.
+        forcing_files_path: Path to the forcing files.
+        climatology_path: Path to the climatology files.
+        output_dir: Path to the output directory.
+        top_working_dir: Path to the top working directory.
     Returns:
         A ``ConfigParser`` instance.
     """
@@ -81,12 +86,22 @@ def _get_config(*, model_config: Path, model: str, start_dates: Optional[str], m
 
     if processes_per_node is not None:
         config_parser['pycompss']['processes_per_node'] = str(processes_per_node)
-
+    
     # TODO: A possible fix for the warning in PyCOMPSs?
     # if processes is not None and processes_per_node is not None:
     #     if int(processes) < int(processes_per_node):
     #         logger.warning("Processes is smaller than processes per node. Fixing it so PyCOMPSs does not fail/warn.")
     #         config_parser['pycompss']['processes'] = config_parser['pycompss']['processes_per_node']
+    if mesh_file_path is not None:
+        config_parser['fesom2']['mesh_file_path'] = str(mesh_file_path)
+    if forcing_files_path is not None:
+        config_parser['fesom2']['forcing_files_path'] = str(forcing_files_path)
+    if climatology_path is not None:
+        config_parser['fesom2']['climatology_path'] = str(climatology_path)
+    if top_working_dir is not None:
+        config_parser['common']['top_working_dir'] = str(top_working_dir)
+    if output_dir is not None:
+        config_parser['common']['output_dir'] = str(output_dir)
 
     return config_parser
 
@@ -288,6 +303,10 @@ def _get_parser():
                         type=int, required=False)
     parser.add_argument('--prune', dest='prune', help='Enable pruning.', action='store_true')
     parser.add_argument('--debug', dest='debug', help='Enable debug (more verbose) information.', action='store_true')
+    parser.add_argument('--mesh_dir', dest='mesh_dir', help='Overwrite mesh path in the configuration.', type=Path, required=False)
+    parser.add_argument('--data_dir', dest='data_dir', help='Overwrite data path in the configuration.', type=Path, required=False)
+    parser.add_argument('--output_dir', dest='output_dir', help='Overwrite output path in the configuration.', type=Path, required=False)
+    parser.add_argument('--top_working_dir', dest='top_working_dir', help='Overwrite top_working path in the configuration.', type=Path, required=False)
     return parser
 
 
@@ -318,7 +337,14 @@ def main() -> None:
         start_dates=args.start_dates,
         members=args.members,
         processes=args.processes,
-        processes_per_node=args.processes_per_node)
+        processes_per_node=args.processes_per_node,
+        mesh_file_path=str(args.mesh_dir),
+        forcing_files_path=str(args.data_dir),
+        climatology_path=str(args.data_dir),
+        output_dir=str(args.output_dir),
+        top_working_dir=str(args.top_working_dir)
+
+)
 
     logger.info(f"Using eFlows4HPC configuration: {model_config}")
 
