@@ -338,11 +338,11 @@ def main() -> None:
         members=args.members,
         processes=args.processes,
         processes_per_node=args.processes_per_node,
-        mesh_file_path=str(args.mesh_dir),
-        forcing_files_path=str(args.data_dir),
-        climatology_path=str(args.data_dir),
-        output_dir=str(args.output_dir),
-        top_working_dir=str(args.top_working_dir)
+        mesh_file_path=args.mesh_dir,
+        forcing_files_path=args.data_dir,
+        climatology_path=args.data_dir,
+        output_dir=args.output_dir,
+        top_working_dir=args.top_working_dir
 
 )
 
