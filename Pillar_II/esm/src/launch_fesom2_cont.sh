@@ -156,7 +156,7 @@ echo "MEMBERS         : ${MEMBERS}"
 # shellcheck source=src/fesom2/env/mn4.sh
 source "${SCRIPT_DIR}/${MODEL}/env/${HPC}_container.sh"
 
-CONTAINER=/gpfs/projects/bsc19/eflows_demo/pillarII/hecuba_test/pillar_ii_esm_skylake_openmpi_4_nogpu_v_v3.sif
+CONTAINER=/home/bsc19/bsc19611/pillar_ii_esm_skylake_openmpi_4_nogpu_v_latest.sif
 
 # From PyCOMPSs docs: "Expected execution time of the application (in minutes)".
 _PYCOMPSS_EXEC_TIME="${_PYCOMPSS_EXEC_TIME:-120}"
@@ -170,7 +170,7 @@ enqueue_compss \
   --container_image=$CONTAINER \
   --container_opts="-e" \
   --container_compss_path="/opt/view/compss" \
-  --env_script="${SCRIPT_DIR}/${MODEL}/env/container.sh" \
+  --env_script="/esm/src/${MODEL}/env/container.sh" \
   --storage_props="${HECUBA_CONFIGURATION}" \
   --storage_home="${HECUBA_ROOT}/compss" \
   --exec_time="${_PYCOMPSS_EXEC_TIME}" \
@@ -178,16 +178,16 @@ enqueue_compss \
   --worker_working_dir="${SCRIPT_DIR}" \
   --worker_in_master_cpus="${CORES_PER_NODE}" \
   --num_nodes="${NODE_ALLOCATION}" \
-  --pythonpath="${SCRIPT_DIR}:${HECUBA_ROOT}/compss" \
+  --pythonpath="/esm/src/" \
   --log_dir="${PWD}/out" \
-  "${SCRIPT_DIR}/esm_simulation.py" \
+  "/esm/src/esm_simulation.py" \
   --model "${MODEL}" \
   --start_dates "${START_DATES}" \
   --members "${MEMBERS}" \
   --processes "${CORES}" \
   --processes_per_node "${CORES_PER_NODE}" \
   --expid "${EXP_ID}" \
-  --config "${SCRIPT_DIR}/fesom2/esm_ensemble_tmpl.conf" \
+  --config "/esm/src/fesom2/esm_ensemble_tmpl.conf" \
   --mesh_dir "/gpfs/projects/dese28/models/fesom/v21/core2/" \
   --data_dir "/gpfs/projects/dese28/models/fesom2_eflows4hpc/fesom2/test/input/global/" \
   --top_working_dir "$TOP_WORKING_DIR" --output_dir "$OUTPUT_DIR" \
