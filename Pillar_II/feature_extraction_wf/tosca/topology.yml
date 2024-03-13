@@ -1,8 +1,8 @@
 tosca_definitions_version: alien_dsl_3_0_0
 
 metadata:
-  template_name: TestCmcc1
-  template_version: 0.1.0-SNAPSHOT
+  template_name: FeatureExtractionDls
+  template_version: 0.2.0-SNAPSHOT
   template_author: sonia
 
 description: ""
@@ -11,53 +11,201 @@ imports:
   - yorc-types:1.1.0
   - eflows4hpc.env:1.1.0
   - tosca-normative-types:1.0.0-ALIEN20
+  - dls.ansible:1.4.4-SNAPSHOT
   - alien-base-types:3.0.0
   - org.eflows4hpc.pycompss.plugin:1.1.0
 
 topology_template:
+  inputs:
+    source_user_id:
+      type: string
+      required: true
+      description: "User id to use for authentication may be replaced with workflow input"
   node_templates:
     PyCOMPSJob:
       metadata:
-        a4c_edit_x: "-34"
-        a4c_edit_y: 3
+        a4c_edit_x: "-83"
+        a4c_edit_y: "-358"
       type: org.eflows4hpc.pycompss.plugin.nodes.PyCOMPSJob
       properties:
         environment: 
-          endpoint: "zeus.cmcc.scc"
           user_name: ss18121
         submission_params: 
           qos: debug
           python_interpreter: ""
           num_nodes: 1
-          extra_compss_opts: "--project_name=$project_name --queue=$queue --streaming=FILES --master_working_dir=$application_path/src --worker_working_dir=$application_path/src --worker_in_master_cpus=0 --graph=true --exec_time=$exec_time --env_script=$application_path/src/env.sh --pythonpath=$application_path/src/modules --keep_workingdir"
+          extra_compss_opts: "--project_name=$project_name --queue=$queue --streaming=FILES --base_log_dir=$application_path/compss-log --master_working_dir=$application_path/src --worker_working_dir=$application_path/src --worker_in_master_cpus=0 --graph=true --exec_time=$exec_time --env_script=$application_path/src/env.sh --pythonpath=$application_path/src/modules --keep_workingdir"
         application: 
           container_opts: 
             container_opts: "\"-e\""
           arguments: 
             - "$application_path/input/"
             - "$application_path/output/"
-          command: "$application_path/src/feature_extraction.py"
+          command: "$application_path/src/CMCC-CM3.py"
         keep_environment: true
       requirements:
         - dependsOnAbstractEnvironmentExec_env:
             type_requirement: environment
-            node: AbstractEnvironment
+            node: Source_Environment
             capability: eflows4hpc.env.capabilities.ExecutionEnvironment
             relationship: tosca.relationships.DependsOn
-    AbstractEnvironment:
+    SSH2SSH:
       metadata:
-        a4c_edit_x: 194
-        a4c_edit_y: 5
+        a4c_edit_x: "-77"
+        a4c_edit_y: "-196"
+      type: dls.ansible.nodes.SSH2SSH
+      properties:
+        dag_id: ssh2ssh
+        input_name_for_source_path: "source_path"
+        input_name_for_source_user_id: "source_user_id"
+        input_name_for_source_vault_id: "vault_id"
+        input_name_for_target_path: "target_path"
+        input_name_for_target_user_id: "target_user_id"
+        input_name_for_target_vault_id: "vault_id"
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
+        debug: true
+        user_id: ""
+        vault_id: ""
+        run_in_standard_mode: false
+      requirements:
+        - dependsOnAbstractEnvironment2Exec_env:
+            type_requirement: environment
+            node: Target_Environment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+        - dependsOnPyCompsJobFeature:
+            type_requirement: dependency
+            node: PyCOMPSJob
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+        - dependsOnAbstractEnvironmentExec_env:
+            type_requirement: source_environment
+            node: Source_Environment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+    DLSDAGStageInData:
+      metadata:
+        a4c_edit_x: 135
+        a4c_edit_y: "-119"
+      type: dls.ansible.nodes.DLSDAGStageInData
+      properties:
+        input_name_for_oid: oid
+        input_name_for_target_path: "target_path"
+        input_name_for_login: "target_user_id"
+        input_name_for_vault_id: "vault_id"
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
+        dag_id: "taskflow_example"
+        debug: true
+        user_id: ""
+        vault_id: ""
+        run_in_standard_mode: false
+      requirements:
+        - dependsOnAbstractEnvironment2Exec_env:
+            type_requirement: environment
+            node: Target_Environment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+    PyCOMPSJob2:
+      metadata:
+        a4c_edit_x: "-32"
+        a4c_edit_y: 24
+      type: org.eflows4hpc.pycompss.plugin.nodes.PyCOMPSJob
+      properties:
+        environment: 
+          user_name: bsc44740
+        submission_params: 
+          qos: debug
+          python_interpreter: ""
+          num_nodes: 1
+          extra_compss_opts: "--graph=true --lang=python --exec_time=$exec_time --env_script=$application1_path/src/env.sh --streaming=FILES --master_working_dir=$application1_path/src --worker_working_dir=$application1_path/src --worker_in_master_cpus=0 --log_dir=$application1_path/compss-log --pythonpath=$application1_path/src/modules --keep_workingdir"
+        application: 
+          container_opts: 
+            container_opts: "\"-e\""
+          arguments: 
+            - "$application1_path/input/"
+            - "$application1_path/output/"
+          command: "$application1_path/src/feature_extraction.py"
+        keep_environment: true
+      requirements:
+        - dependsOnDlsdagStageInDataFeature:
+            type_requirement: dependency
+            node: DLSDAGStageInData
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+        - dependsOnAbstractEnvironment2Exec_env:
+            type_requirement: environment
+            node: Target_Environment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+        - dependsOnSsh2SshFeature:
+            type_requirement: dependency
+            node: SSH2SSH
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+    DLSDAGStageOutData:
+      metadata:
+        a4c_edit_x: 152
+        a4c_edit_y: 219
+      type: dls.ansible.nodes.DLSDAGStageOutData
+      properties:
+        register: true
+        input_name_for_mid: mid
+        input_name_for_source_path: "result_data_path"
+        input_name_for_register: register
+        input_name_for_login: "target_user_id"
+        input_name_for_vault_id: "vault_id"
+        dls_api_username: { get_secret: [/secret/data/services_secrets/dls, data=username] }
+        dls_api_password: { get_secret: [/secret/data/services_secrets/dls, data=password] }
+        dag_id: "upload_example"
+        debug: true
+        user_id: ""
+        vault_id: ""
+        run_in_standard_mode: false
+      requirements:
+        - dependsOnAbstractEnvironment2Exec_env:
+            type_requirement: environment
+            node: Target_Environment
+            capability: eflows4hpc.env.capabilities.ExecutionEnvironment
+            relationship: tosca.relationships.DependsOn
+        - dependsOnPyCompsJob2Feature:
+            type_requirement: dependency
+            node: PyCOMPSJob2
+            capability: tosca.capabilities.Node
+            relationship: tosca.relationships.DependsOn
+    Source_Environment:
+      metadata:
+        a4c_edit_x: 694
+        a4c_edit_y: "-333"
+      type: eflows4hpc.env.nodes.AbstractEnvironment
+    Target_Environment:
+      metadata:
+        a4c_edit_x: 701
+        a4c_edit_y: "-130"
       type: eflows4hpc.env.nodes.AbstractEnvironment
   workflows:
     customWorkflow:
       inputs:
-        user_id:
+        source_user_id:
           type: string
           required: true
+          description: "User id to use for authentication may be replaced with workflow input"
         vault_id:
           type: string
           required: true
+          description: "User id to use for authentication may be replaced with workflow input"
+        source_path:
+          type: string
+          required: false
+          description: "URL of the git server"
+        target_user_id:
+          type: string
+          required: true
+        target_path:
+          type: string
+          required: false
+          description: "Repository in the git server"
         num_nodes:
           type: integer
           required: true
@@ -67,20 +215,183 @@ topology_template:
         application_path:
           type: string
           required: true
+        application1_path:
+          type: string
+          required: true
         queue:
           type: string
           required: true
         exec_time:
           type: integer
           required: true
+        oid:
+          type: string
+          required: true
+        mid:
+          type: string
+          required: true
+        result_data_path:
+          type: string
+          required: true
       steps:
+        DLSDAGStageInData_run:
+          target: DLSDAGStageInData
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - DLSDAGStageInData_executed
+        PyCOMPSJob2_executing:
+          target: PyCOMPSJob2
+          activities:
+            - set_state: executing
+          on_success:
+            - PyCOMPSJob2_run
+        PyCOMPSJob_submitting:
+          target: PyCOMPSJob
+          activities:
+            - set_state: submitting
+          on_success:
+            - PyCOMPSJob_submit
         PyCOMPSJob_submit:
           target: PyCOMPSJob
           activities:
             - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
           on_success:
+            - PyCOMPSJob_submitted
+        PyCOMPSJob2_submitting:
+          target: PyCOMPSJob2
+          activities:
+            - set_state: submitting
+          on_success:
+            - PyCOMPSJob2_submit
+        DLSDAGStageInData_executing:
+          target: DLSDAGStageInData
+          activities:
+            - set_state: executing
+          on_success:
+            - DLSDAGStageInData_run
+        PyCOMPSJob_submitted:
+          target: PyCOMPSJob
+          activities:
+            - set_state: submitted
+          on_success:
+            - PyCOMPSJob_executing
+        PyCOMPSJob2_submitted:
+          target: PyCOMPSJob2
+          activities:
+            - set_state: submitted
+          on_success:
+            - PyCOMPSJob2_executing
+        PyCOMPSJob2_submit:
+          target: PyCOMPSJob2
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - PyCOMPSJob2_submitted
+        DLSDAGStageInData_submit:
+          target: DLSDAGStageInData
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - DLSDAGStageInData_submitted
+        PyCOMPSJob2_executed:
+          target: PyCOMPSJob2
+          activities:
+            - set_state: executed
+          on_success:
+            - DLSDAGStageOutData_submitting
+        PyCOMPSJob2_run:
+          target: PyCOMPSJob2
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - PyCOMPSJob2_executed
+        DLSDAGStageOutData_executing:
+          target: DLSDAGStageOutData
+          activities:
+            - set_state: executing
+          on_success:
+            - DLSDAGStageOutData_run
+        DLSDAGStageOutData_run:
+          target: DLSDAGStageOutData
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+        DLSDAGStageOutData_submit:
+          target: DLSDAGStageOutData
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - DLSDAGStageOutData_submitted
+        SSH2SSH_executed:
+          target: SSH2SSH
+          activities:
+            - set_state: executed
+          on_success:
+            - PyCOMPSJob2_submitting
+        DLSDAGStageInData_submitted:
+          target: DLSDAGStageInData
+          activities:
+            - set_state: submitted
+          on_success:
+            - DLSDAGStageInData_executing
+        PyCOMPSJob_executing:
+          target: PyCOMPSJob
+          activities:
+            - set_state: executing
+          on_success:
             - PyCOMPSJob_run
+        SSH2SSH_run:
+          target: SSH2SSH
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - SSH2SSH_executed
+        PyCOMPSJob_executed:
+          target: PyCOMPSJob
+          activities:
+            - set_state: executed
+          on_success:
+            - SSH2SSH_submitting
+        DLSDAGStageInData_executed:
+          target: DLSDAGStageInData
+          activities:
+            - set_state: executed
+          on_success:
+            - PyCOMPSJob2_submitting
+        DLSDAGStageOutData_submitted:
+          target: DLSDAGStageOutData
+          activities:
+            - set_state: submitted
+          on_success:
+            - DLSDAGStageOutData_executing
+        DLSDAGStageInData_submitting:
+          target: DLSDAGStageInData
+          activities:
+            - set_state: submitting
+          on_success:
+            - DLSDAGStageInData_submit
+        SSH2SSH_submitting:
+          target: SSH2SSH
+          activities:
+            - set_state: submitting
+          on_success:
+            - SSH2SSH_submit
+        DLSDAGStageOutData_submitting:
+          target: DLSDAGStageOutData
+          activities:
+            - set_state: submitting
+          on_success:
+            - DLSDAGStageOutData_submit
         PyCOMPSJob_run:
           target: PyCOMPSJob
           activities:
             - call_operation: tosca.interfaces.node.lifecycle.Runnable.run
+          on_success:
+            - PyCOMPSJob_executed
+        SSH2SSH_submit:
+          target: SSH2SSH
+          activities:
+            - call_operation: tosca.interfaces.node.lifecycle.Runnable.submit
+          on_success:
+            - SSH2SSH_run
+
