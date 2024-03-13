@@ -132,10 +132,6 @@ echo -e "\nLaunch arguments:\n"
 
 # --expid is now optional. Python does the same thing.
 EXP_ID=$(get_expid)
-OUTPUT_DIR=$PWD/out/output_dir
-mkdir -p $OUTPUT_DIR
-TOP_WORKING_DIR=$PWD/out/top_working_dir
-mkdir -p $TOP_WORKING_DIR
 
 echo "EXPID           : ${EXP_ID}"
 echo "MODEL           : ${MODEL}"
@@ -156,8 +152,13 @@ echo "MEMBERS         : ${MEMBERS}"
 # shellcheck source=src/fesom2/env/mn4.sh
 source "${SCRIPT_DIR}/${MODEL}/env/${HPC}_container.sh"
 
-CONTAINER=/home/bsc19/bsc19611/pillar_ii_esm_skylake_openmpi_4_nogpu_v_latest.sif
-
+CONTAINER=/work/ab0995/eflows4hpc/images/pillar_ii_esm_skylake_openmpi_4_nogpu_v_latest.sif
+DATA_PATH=/work/ab0995/eflows4hpc/data/
+OUT_PATH=/work/ab0995/eflows4hpc/output/
+OUTPUT_DIR=$OUT_PATH/output_dir
+mkdir -p $OUTPUT_DIR
+TOP_WORKING_DIR=$OUT_PATH/out/top_working_dir
+mkdir -p $TOP_WORKING_DIR
 # From PyCOMPSs docs: "Expected execution time of the application (in minutes)".
 _PYCOMPSS_EXEC_TIME="${_PYCOMPSS_EXEC_TIME:-120}"
 
@@ -166,13 +167,14 @@ _PYCOMPSS_EXEC_TIME="${_PYCOMPSS_EXEC_TIME:-120}"
 
 enqueue_compss \
   --debug \
-  --qos="${QOS}" \
+  --project_name=ab0995 \
   --container_image=$CONTAINER \
   --container_opts="-e" \
   --container_compss_path="/opt/view/compss" \
   --env_script="/esm/src/${MODEL}/env/container.sh" \
   --storage_props="${HECUBA_CONFIGURATION}" \
   --storage_home="${HECUBA_ROOT}/compss" \
+  --storage_container_image=$CONTAINER \
   --exec_time="${_PYCOMPSS_EXEC_TIME}" \
   --keep_workingdir \
   --worker_working_dir="${SCRIPT_DIR}" \
@@ -188,8 +190,8 @@ enqueue_compss \
   --processes_per_node "${CORES_PER_NODE}" \
   --expid "${EXP_ID}" \
   --config "/esm/src/fesom2/esm_ensemble_tmpl.conf" \
-  --mesh_dir "/gpfs/projects/dese28/models/fesom/v21/core2/" \
-  --data_dir "/gpfs/projects/dese28/models/fesom2_eflows4hpc/fesom2/test/input/global/" \
+  --mesh_dir "$DATA_PATH/core2/" \
+  --data_dir "$DATA_PATH/global/" \
   --top_working_dir "$TOP_WORKING_DIR" --output_dir "$OUTPUT_DIR" \
   "${DEBUG}" \
   "${PRUNE}"
