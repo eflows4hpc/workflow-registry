@@ -20,7 +20,7 @@ MEMBERS=1
 
 # Parse options. Note that options may be followed by one colon to indicate
 # they have a required argument.
-if ! options=$(getopt --name "$(basename "$0")" --options hdc:q: --longoptions help,debug,prune,cores:,start_dates:,members:,qos:,hpc:,cores_per_node: -- "$@"); then
+if ! options=$(getopt --name "$(basename "$0")" --options hdc:q: --longoptions help,debug,prune,cores:,start_dates:,members:,qos:,hpc:,cores_per_node:,container:,mesh_path:,data_path:,output_path: -- "$@"); then
   # Error, getopt will put out a message for us
   exit 1
 fi
@@ -28,7 +28,7 @@ fi
 eval set -- "${options}"
 
 function usage() {
-  echo "Usage: $0 --hpc <mn4|levante|local> -c|--cores <CORES> --cores_per_node <CORES_PER_NODE> --start_dates <YYYY,YYYY> --members <MEMBERS> [-q|--qos <QUEUE>] [-d|--debug] [-h|--help]" 1>&2
+  echo "Usage: $0 --hpc <mn4|levante|local> -c|--cores <CORES> --cores_per_node <CORES_PER_NODE> --start_dates <YYYY,YYYY> --members <MEMBERS> --container <CONTAINER_PATH> --mesh_path <MESH_PATH> --data_path <DATA_PATH> --output_path <OUTPUT_PATH> [-q|--qos <QUEUE>] [-d|--debug] [-h|--help]" 1>&2
   exit 1
 }
 
@@ -69,6 +69,22 @@ while [ $# -gt 0 ]; do
     CORES_PER_NODE="$2"
     shift
     ;;
+  --container)
+    CONTAINER="$2"
+    shift
+    ;;
+  --mesh_path)
+    MESH_PATH="$2"
+    shift
+    ;;
+  --data_path)
+    DATA_PATH="$2"
+    shift
+    ;;
+  --output_path)
+    OUT_PATH="$2"
+    shift
+    ;;	  
   --)
     shift
     break
@@ -107,6 +123,26 @@ fi
 
 if [ "${MEMBERS}" -le 0 ]; then
   echo -e "Number of ensemble members must be equal or greater than 1\n"
+  usage
+fi
+
+if [ -z "${CONTAINER}" ]; then
+  echo -e "Please provide the path to the container\n"
+  usage
+fi
+
+if [ -z "${MESH_PATH}" ]; then
+  echo -e "Please provide the path to the mesh to use\n"
+  usage
+fi
+
+if [ -z "${DATA_PATH}" ]; then
+  echo -e "Please provide the path to the climatological data to use\n"
+  usage
+fi
+
+if [ -z "${OUT_PATH}" ]; then
+  echo -e "Please provide the path to the output data to use\n"
   usage
 fi
 
@@ -152,9 +188,9 @@ echo "MEMBERS         : ${MEMBERS}"
 # shellcheck source=src/fesom2/env/mn4.sh
 source "${SCRIPT_DIR}/${MODEL}/env/${HPC}_container.sh"
 
-CONTAINER=/work/ab0995/eflows4hpc/images/pillar_ii_esm_skylake_openmpi_4_nogpu_v_latest.sif
-DATA_PATH=/work/ab0995/eflows4hpc/data/
-OUT_PATH=/work/ab0995/eflows4hpc/output/
+#CONTAINER=/work/ab0995/eflows4hpc/images/pillar_ii_esm_skylake_openmpi_4_nogpu_v_latest.sif
+#DATA_PATH=/work/ab0995/eflows4hpc/data/
+#OUT_PATH=/work/ab0995/eflows4hpc/output/
 OUTPUT_DIR=$OUT_PATH/output_dir
 mkdir -p $OUTPUT_DIR
 TOP_WORKING_DIR=$OUT_PATH/out/top_working_dir
@@ -190,8 +226,8 @@ enqueue_compss \
   --processes_per_node "${CORES_PER_NODE}" \
   --expid "${EXP_ID}" \
   --config "/esm/src/fesom2/esm_ensemble_tmpl.conf" \
-  --mesh_dir "$DATA_PATH/core2/" \
-  --data_dir "$DATA_PATH/global/" \
+  --mesh_dir "$MESH_PATH" \
+  --data_dir "$DATA_PATH" \
   --top_working_dir "$TOP_WORKING_DIR" --output_dir "$OUTPUT_DIR" \
   "${DEBUG}" \
   "${PRUNE}"
