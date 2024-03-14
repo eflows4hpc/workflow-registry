@@ -14,7 +14,7 @@ workflow-registry
   |    |    |- types.yml               TOSCA description of the different components involved in the workflow
   |    |       ... 
   |    |- step_1
-  |    |    |- spack.yml               Sofware requirements for this workflow step as a Spack environment specification 
+  |    |    |- eflows4hpc.yml          Sofware requirements for this workflow step: In can include apt pip and Spack specifications 
   |    |    |- src                     PyCOMPSs code of the workflow step
   |    |       ...
   |    |- step_2
