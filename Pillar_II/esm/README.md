@@ -156,6 +156,37 @@ The pruning task inspects each members data, dynamically, and modifies a column
 in the Cassandra database for that member. The next time FESOM2 looks at the column,
 it will understand it must stop.
 
+#### Running with containers
+
+To run with containers we have created `launch_fesom2_cont.sh` to launch all 
+the workflow stack (PyCOMPSs, Hecuba and FESOM2) using a container image.
+
+This script is similar to the `launch_fesom2.sh`, but in this case you have to specify 
+the location of the container image and where the data sets are installed in the HPC site.
+
+
+```bash
+$ ./launch_fesom2_cont.sh -h
+Usage: ./launch_fesom2_cont.sh --hpc <mn4|levante|local> -c|--cores <CORES> --cores_per_node <CORES_PER_NODE> --start_dates <YYYY,YYYY> --members <MEMBERS> --container <CONTAINER_PATH> --mesh_path <MESH_PATH> --data_path <DATA_PATH> --output_path <OUTPUT_PATH> [-q|--qos <QUEUE>] [-d|--debug] [-h|--help]
+```
+
+One example of running this file for Levante is the following:
+
+
+```bash
+$ ./launch_fesom2_cont.sh \
+	--hpc levante \
+        --start_dates 1948 \
+	--cores 384 \
+	--cores_per_node 128 \ 
+	--members 2 \ 
+	--container /work/ab0995/eflows4hpc/images/pillar_ii_esm_skylake_openmpi_4_nogpu_v_latest.sif \
+	--mesh_path /work/ab0995/eflows4hpc/data/core2/ \
+	--data_path /work/ab0995/eflows4hpc/data/global/ \
+	--output_path /work/ab0995/eflows4hpc/output/ \
+	--prune
+```
+
 ### AWICM3
 
 TODO
