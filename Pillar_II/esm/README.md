@@ -158,9 +158,11 @@ it will understand it must stop.
 
 #### Running with containers
 
-To run with containers we have created `launch_fesom2_cont.sh` to launch all the workflow stack (PyCOMPSs, Hecuba and Fesom2) using a continer image.
+To run with containers we have created `launch_fesom2_cont.sh` to launch all 
+the workflow stack (PyCOMPSs, Hecuba and FESOM2) using a container image.
 
-This script is similar to the `launch_fesom2.sh`, but in this case you have to specify the location of the container image and where the data sets are installed in the HPC site.
+This script is similar to the `launch_fesom2.sh`, but in this case you have to specify 
+the location of the container image and where the data sets are installed in the HPC site.
 
 
 ```bash
@@ -168,7 +170,7 @@ $ ./launch_fesom2_cont.sh -h
 Usage: ./launch_fesom2_cont.sh --hpc <mn4|levante|local> -c|--cores <CORES> --cores_per_node <CORES_PER_NODE> --start_dates <YYYY,YYYY> --members <MEMBERS> --container <CONTAINER_PATH> --mesh_path <MESH_PATH> --data_path <DATA_PATH> --output_path <OUTPUT_PATH> [-q|--qos <QUEUE>] [-d|--debug] [-h|--help]
 ```
 
-One example of running this file for levante is the following
+One example of running this file for Levante is the following:
 
 
 ```bash
