@@ -1,0 +1,35 @@
+apt update
+apt install -y libbz2-dev liblzma-dev libcurl4-openssl-dev libssl-dev libfontconfig1-dev libharfbuzz-dev libfribidi-dev libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev libhdf5-dev libmagick++-dev libgsl-dev libglpk-dev libpq-dev libudunits2-dev libfftw3-dev libmysqlclient-dev default-libmysqlclient-dev libgdal-dev libgit2-dev
+apt install software-properties-common dirmngr wget -y
+wget -qO- https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc | tee -a /etc/apt/trusted.gpg.d/cran_ubuntu_key.asc
+add-apt-repository "deb https://cloud.r-project.org/bin/linux/ubuntu $(lsb_release -cs)-cran40/"
+apt update
+apt install r-base r-base-dev -y
+apt install libmariadb-dev libmariadbclient-dev -y
+
+
+
+
+
+
+#!/usr/bin/env Rscript --vanilla
+#r = getOption("repos")
+#r["CRAN"] = "http://cran.us.r-project.org"
+#options(repos = r)
+
+# Directory for installing packages
+libpath <- .libPaths()[1]
+
+# Install devtools and load it
+install.packages("devtools", repos='http://cran.rstudio.com/', dependencies = TRUE, lib = libpath)
+library("devtools")
+
+#install.packages("https://cran.r-project.org/src/contrib/Archive/Seurat/Seurat_3.2.3.tar.gz",
+#                 repos=NULL, type="source", INSTALL_opts = "--no-lock", dependencies = TRUE, lib = libpath)
+
+# Install Bioconductor
+BiocManager::install(lib = libpath, ask = FALSE)
+BiocManager::install("multtest", lib = libpath, update = FALSE)
+
+
+install.packages('Seurat', version = "3.2.3", repos = c('https://satijalab.r-universe.dev', 'https://cloud.r-project.org'), dependencies = TRUE, lib = libpath)
