@@ -63,6 +63,7 @@ def save_ts_out_ptf_tot(scenarios, pois, outdir, seis_type, errfile):
     ts_max_off_gl = np.zeros((n_scenarios, n_pois))
     ts_p2t = np.zeros((n_scenarios, n_pois))
     ts_p2t_gl = np.zeros((n_scenarios, n_pois))
+    fail = np.zeros((n_scenarios))
 
     errfile = os.path.join(outdir, "Step2_" + seis_type + "_failed.log")
     ferr = open(errfile,'w')
@@ -85,6 +86,12 @@ def save_ts_out_ptf_tot(scenarios, pois, outdir, seis_type, errfile):
         else:
             #nc = h5py.File(tsfile,'r')
             nc = xr.open_dataset(tsfile)
+            ts_p2t_tmp = np.array(nc["ts_p2t_gl"].values)
+            max_val = np.max(ts_p2t_tmp)
+            if max_val>100:
+               fail[isc]=1
+            else:
+               fail[isc]=0
             ts_max[isc,:] = nc["ts_max"].values
             ts_min[isc,:] = nc["ts_min"].values
             ts_p2t[isc,:] = nc["ts_p2t"].values
@@ -130,6 +137,8 @@ def save_ts_out_ptf_tot(scenarios, pois, outdir, seis_type, errfile):
 
     ferr.close()
 
+    return fail
+
 ######################################################################
 
 def step2_create_ptf_input(ts_path, out_path, depth_file, log_file):
@@ -158,11 +167,13 @@ def step2_create_ptf_input(ts_path, out_path, depth_file, log_file):
     
     if os.path.isdir(out_path):
         #scenarios_bs = [d for d in sorted(os.listdir(bs_path)) if "BS" in d]
-        save_ts_out_ptf_tot(scenarios_bs, poi_depth, outdir, "BS",log_file)
+        fail=save_ts_out_ptf_tot(scenarios_bs, poi_depth, outdir,"BS",log_file)
     else:
         print("WARN: Outpath not a directory", flush=True)
     #if os.path.isdir(ps_path):
     #    scenarios_ps = [d for d in sorted(os.listdir(ps_path)) if "PS" in d]
     #    save_ts_out_ptf_tot(ps_path, scenarios_ps, poi_depth, outdir, "PS",log_file)
+
+    return fail
 
 

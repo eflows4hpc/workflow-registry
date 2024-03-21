@@ -1,4 +1,5 @@
 import os
+import sys
 import h5py
 import numpy as np
 import pathlib
@@ -434,10 +435,11 @@ def save_ptf_dictionaries(**kwargs):
 
             #h5file = save_dict['event_path'] + os.sep + save_dict['alert_levels'] + '.hdf5'
             #hkl.dump(alert_levels, h5file, mode='w')
+            h5file_hc = save_dict['event_path']
 
             if MC_samp_scen>0:
                for Nid in range(rangemc):
-                   h5file = save_dict['event_path'] + os.sep + save_dict['hazard_curves_MC'] + '_' + '%d'%Nid + '.hdf5'
+                   h5file_hc = save_dict['event_path'] + os.sep + save_dict['hazard_curves_MC'] + '_' + '%d'%Nid + '.hdf5'
                    #hkl.dump(hazard_curves_mc['%d'%Nid], h5file, mode='w')
                    hf = h5py.File(save_dict['event_path'] + os.sep + save_dict['hazard_curves_MC'] + '_' + '%d'%Nid + '.hdf5', 'w')
                    hf.create_dataset('hazard_curves_at_pois', data=hazard_curves_mc['%d'%Nid]['hazard_curves_at_pois'])
@@ -456,7 +458,7 @@ def save_ptf_dictionaries(**kwargs):
 
             if RS_samp_scen>0:
                for Nid in range(rangers):
-                   h5file = save_dict['event_path'] + os.sep + save_dict['hazard_curves_RS'] + '_' + '%d'%Nid + '_' + '%d'%inter +'.hdf5'
+                   h5file_hc = save_dict['event_path'] + os.sep + save_dict['hazard_curves_RS'] + '_' + '%d'%Nid + '_' + '%d'%inter +'.hdf5'
                    hf = h5py.File(save_dict['event_path'] + os.sep + save_dict['hazard_curves_RS'] + '_' + '%d'%Nid + '_' + '%d'%inter +'.hdf5', 'w')
                    hf.create_dataset('hazard_curves_at_pois', data=hazard_curves_rs['%d'%Nid]['hazard_curves_at_pois'])
                    hf.create_dataset('hazard_curves_at_pois_mean', data=hazard_curves_rs['%d'%Nid]['hazard_curves_at_pois_mean'])
@@ -473,7 +475,7 @@ def save_ptf_dictionaries(**kwargs):
                    hf.close()
 
 
-    return save_dict
+    return h5file_hc
 
 def save_ptf_out(**kwargs):
 

@@ -3,10 +3,12 @@
 
 # Import system modules
 import os
+import sys
 import configparser
 import hickle as hkl
-import numpy as np
+import numpy       as np
 from datetime import datetime
+import time
 
 # Import functions from pyPTF modules
 from ptf_preload             import load_PSBarInfo
@@ -54,16 +56,14 @@ def step1_ensembleEval(**kwargs):
     NbrFM=int(Config.get('Sampling','NbrFM'))
     FM_path=Config.get('EventID','FM_path')
     EventID=Config.get('EventID','eventID')
-
+    
+    init_time = time.time()
     ptf_out = dict()
 
 
     ### Loading and selection of the focal mechanism ###
     h5file = FM_path
-    print("h5file: " + FM_path)
-    print("Event_ID: " + EventID)
     FM_file=hkl.load(h5file)
-    print("FM_File: " + str(FM_file))
     totfm = len(FM_file[EventID])
     if NbrFM==0 or NbrFM>=totfm:
        focal_mech=FM_file[EventID]
@@ -78,6 +78,8 @@ def step1_ensembleEval(**kwargs):
     ellipses = build_ellipsoid_objects(event = event_parameters,
                                        cfg   = Config,
                                        args  = args)
+    out_elipsoids_time = time.time()
+    print('elipsoids_build in ' + str(out_elipsoids_time - init_time))
 
 
     print('Conversion to utm')
@@ -85,7 +87,8 @@ def step1_ensembleEval(**kwargs):
                                                       Poi       = POIs,
                                                       event     = event_parameters,
                                                       PSBarInfo = PSBarInfo)
-
+    out_conversion = time.time()
+    print('Conversion in ' + str(out_conversion - out_elipsoids_time))
     ##########################################################
     # Set separation of lambda BS-PS
     print('Separation of lambda BS-PS')
@@ -101,7 +104,8 @@ def step1_ensembleEval(**kwargs):
                                          lambda_bsps      = lambda_bsps,
                                          LongTermInfo     = LongTermInfo,
                                          mesh             = Mesh)
-
+    out_lambda = time.time()
+    print('Lambda in ' + str(out_lambda - out_conversion))
     #print(lambda_bsps['regionsPerPS'])
     #sys.exit()
     ##########################################################
@@ -116,7 +120,8 @@ def step1_ensembleEval(**kwargs):
                                                LongTermInfo       = LongTermInfo,
                                                PSBarInfo          = PSBarInfo,
                                                ellipses           = ellipses)
-
+    out_preselection = time.time()
+    print('Lambda in ' + str(out_preselection - out_lambda))
     if(pre_selection == False):
         list_tmp_scen = 0
         ptf_out = save_ptf_dictionaries(cfg                = Config,
@@ -125,6 +130,8 @@ def step1_ensembleEval(**kwargs):
                                         sim_files          = sim_files,
                                         list_tmp_scen      = list_tmp_scen,
                                         status             = 'end')
+        out_ptf_dics = time.time()
+        print('Save ptf dics ' + str(out_ptf_dics - out_preselection))
         return False
 
 
@@ -138,7 +145,7 @@ def step1_ensembleEval(**kwargs):
         #    Equivalent of shortterm.py with output: node_st_probabilities
         #    Output: EarlyEst.MagProb, EarlyEst.PosProb, EarlyEst.DepProb, EarlyEst.DepProb, EarlyEst.BarProb, EarlyEst.RatioBSonTot
         print('Compute short term probability distribution')
-
+        init_time = time.time()
         short_term_probability  = short_term_probability_distribution(cfg                = Config,
                                                                       args               = args,
                                                                       event_parameters   = event_parameters,
@@ -146,18 +153,22 @@ def step1_ensembleEval(**kwargs):
                                                                       PSBarInfo          = PSBarInfo,
                                                                       lambda_bsps        = lambda_bsps,
                                                                       pre_selection      = pre_selection)
-
+        out_st_probanilities = time.time()
+        print('Short term probabilities built in ' + str(out_st_probanilities - init_time))
         if(short_term_probability == True):
             list_tmp_scen = 0
-            ptf_out = save_ptf_dictionaries(cfg                = Config,
+            file_hc = save_ptf_dictionaries(cfg                = Config,
                                             args               = args,
                                             event_parameters   = event_parameters,
                                             list_tmp_scen      = list_tmp_scen,
                                             status             = 'end')
+            out_ptf_dics = time.time()
+            print('Save ptf dics ' + str(out_ptf_dics - out_st_probanilities))
             return False
 
         ##COMPUTE PROBABILITIES SCENARIOS: line 840
         print('Compute Probabilities scenarios')
+        init_time = time.time()
         probability_scenarios = compute_probability_scenarios(cfg                = Config,
                                                               args               = args,
                                                               event_parameters   = event_parameters,
@@ -168,7 +179,8 @@ def step1_ensembleEval(**kwargs):
                                                               regions            = Region_files,
                                                               short_term         = short_term_probability,
                                                               Scenarios_PS       = Scenarios_PS)
-
+        out_probabilities = time.time()
+        print('Probabilities built in ' + str(out_probabilities - init_time))
     else:
 
         short_term_probability=0.0
@@ -178,8 +190,9 @@ def step1_ensembleEval(**kwargs):
 ################### Monte Carlo sampling ########################
     
     if MC_samp_scen>0: 
-       print('############## Monte Carlo sampling #################')
-       sampled_ensemble_MC = compute_ensemble_sampling_MC(cfg                = Config,
+        print('############## Monte Carlo sampling #################')
+        init_time = time.time()
+        sampled_ensemble_MC = compute_ensemble_sampling_MC(cfg                = Config,
                                                  args               = args,
                                                  event_parameters   = event_parameters,
                                                  LongTermInfo       = LongTermInfo,
@@ -190,24 +203,26 @@ def step1_ensembleEval(**kwargs):
                                                  short_term         = short_term_probability,
                                                  Scenarios_PS       = Scenarios_PS,
                                                  proba_scenarios    = probability_scenarios)
-       ptf_out['new_ensemble_MC']           = sampled_ensemble_MC
+        ptf_out['new_ensemble_MC']           = sampled_ensemble_MC
+        out_ensambles = time.time()
+        print('Ensambles MC built in ' + str(out_ensambles - init_time))
 
-
-       for Nid in range(MC_samp_run):
-           MC_samp_scen=len(ptf_out['new_ensemble_MC'][Nid]['par_scenarios_bs'][:,0])
-           par=np.zeros((11))
-           myfile = open(sim_files+"Step1_scenario_list_BS.txt",'w')
-           for Nscen in range(MC_samp_scen):
-               par[:]=ptf_out['new_ensemble_MC'][Nid]['par_scenarios_bs'][Nscen,:]
-               myfile.write("%d %f %f %f %f %f %f %f %f %f %f\n"%(Nscen,par[1],par[2],par[3],par[4],par[5],par[6],par[7],par[8],par[9],par[10]))
-           myfile.close()
+        for Nid in range(MC_samp_run):
+            MC_samp_scen=len(ptf_out['new_ensemble_MC'][Nid]['par_scenarios_bs'][:,0])
+            par=np.zeros((11))
+            myfile = open(sim_files+"Step1_scenario_list_BS.txt",'w')
+            for Nscen in range(MC_samp_scen):
+                par[:]=ptf_out['new_ensemble_MC'][Nid]['par_scenarios_bs'][Nscen,:]
+                myfile.write("%d %f %f %f %f %f %f %f %f %f %f\n"%(Nscen,par[1],par[2],par[3],par[4],par[5],par[6],par[7],par[8],par[9],par[10]))
+            myfile.close()
 
 
 ################### Real sampling ########################
 
     if RS_samp_scen>0:
-       print('############## RS sampling #################')
-       sampled_ensemble_RS = compute_ensemble_sampling_RS(cfg                = Config,
+        print('############## RS sampling #################')
+        init_time = time.time()
+        sampled_ensemble_RS = compute_ensemble_sampling_RS(cfg                = Config,
                                                  args               = args,
                                                  event_parameters   = event_parameters,
                                                  LongTermInfo       = LongTermInfo,
@@ -219,16 +234,17 @@ def step1_ensembleEval(**kwargs):
                                                  Scenarios_PS       = Scenarios_PS,
                                                  proba_scenarios    = probability_scenarios)
 
-       ptf_out['new_ensemble_RS']           = sampled_ensemble_RS
-
-       for Nid in range(RS_samp_run):
-           #RS_samp_scen=len(ptf_out['new_ensemble_RS'][0]['real_par_scenarios_bs'])
-           par=np.zeros((11))
-           myfile = open(sim_files+"Step1_scenario_list_BS.txt",'w')
-           for Nscen in range(RS_samp_scen):
-               par[:]=ptf_out['new_ensemble_RS'][0]['real_par_scenarios_bs'][Nscen]
-               myfile.write("%d %f %f %f %f %f %f %f %f %f %f\n"%(Nscen,par[1],par[2],par[3],par[4],par[5],par[6],par[7],par[8],par[9],par[10]))
-           myfile.close()
+        ptf_out['new_ensemble_RS']           = sampled_ensemble_RS
+        out_ensambles = time.time()
+        print('Ensambles MC built in ' + str(out_ensambles - init_time))
+        for Nid in range(RS_samp_run):
+            #RS_samp_scen=len(ptf_out['new_ensemble_RS'][0]['real_par_scenarios_bs'])
+            par=np.zeros((11))
+            myfile = open(sim_files+"Step1_scenario_list_BS.txt",'w')
+            for Nscen in range(RS_samp_scen):
+                par[:]=ptf_out['new_ensemble_RS'][0]['real_par_scenarios_bs'][Nscen]
+                myfile.write("%d %f %f %f %f %f %f %f %f %f %f\n"%(Nscen,par[1],par[2],par[3],par[4],par[5],par[6],par[7],par[8],par[9],par[10]))
+            myfile.close()
 
     #if(probability_scenarios == False):
     #    print( "--> No Probability scenarios found. Save and Exit")
@@ -317,13 +333,12 @@ def run_step1_init(args,sim_files):
     print_event_parameters(dict=event_parameters, args = args)
 
     list_tmp_scen = int(Config.get('Sampling','RS_samp_scen'))
-    ptf_out = save_ptf_dictionaries(cfg                = Config,
+    file_hc = save_ptf_dictionaries(cfg                = Config,
                                     args               = args,
                                     event_parameters   = event_parameters,
                                     sim_files          = sim_files,
                                     list_tmp_scen      = list_tmp_scen,
                                     status             = 'new')
-    
     
     ######################################################
     # Ensemble evaluation

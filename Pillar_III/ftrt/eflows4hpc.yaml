@@ -16,6 +16,7 @@ spack:
                 - py-scipy
                 - py-h5py
                 - py-pandas
+                - py-netcdf4
                  
 pip:
        - xarray==0.16.1

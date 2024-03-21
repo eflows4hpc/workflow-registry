@@ -79,7 +79,7 @@ def parse_ptf_stdin():
     parser.add_argument('--run_path', default = None, help = "Path where workflow is executed output is stored")
     parser.add_argument('--templates_path', default = None, help = 'Path where configuration templates are stored')
     parser.add_argument('--parameters_file', default = None, help = 'Parameter_file')
-    
+    parser.add_argument('--user_pois', default = None, help = 'User defined POIS') 
     parser.add_argument('--event_id', default = 0, help = 'Event id') 
     
      

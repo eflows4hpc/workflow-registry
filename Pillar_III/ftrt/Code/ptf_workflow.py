@@ -27,7 +27,7 @@ sys.path.append(install_dir+'/Code/Common/py/')
 
 # Required paths
 tsunamiHySEA_bin= HySEA_dir + "/bin/TsunamiHySEA"
-load_balancing_bin= HySEA_dir + "/bin/get_load_balancing"
+load_balancing_bin= HySEA_dir + "/bin_lb/get_load_balancing"
 
 simulBS_bin = install_dir+"/Code/scripts/Step2_config_simul.sh"
 config_bin = install_dir+"/Code/scripts/Create_config.sh"
@@ -36,12 +36,15 @@ config_bin = install_dir+"/Code/scripts/Create_config.sh"
 gpus_per_node=os.environ.get("PTF_GPUS_NODE",4)
 gpus_per_exec=os.environ.get("PTF_GPUS_EXEC",4)
 
+big_task_cu=160
+small_task_cu=40
+
 ###################### PYCOMPSS TASKS #########################
 
 ### TASK FOR STEP1 ###
+@constraint(computing_units=big_task_cu)
 @task(config_file=FILE_IN, returns=1)
 def step1_func(args, config_file, seistype, sim_files_step1):
-
     args.cfg=config_file
     run_step1_init(args,sim_files_step1)
     return sim_files_step1 + "/Step1_scenario_list_"+seistype+".txt"
@@ -50,7 +53,6 @@ def step1_func(args, config_file, seistype, sim_files_step1):
 @binary(binary=config_bin)
 @task(config_template=FILE_IN, config_file=FILE_OUT, par_file=FILE_IN)
 def build_config(config_template, config_file, data_dir, files_step2, par_file, kag, tsu, event_id, user_pois):
-
     pass
 
 
@@ -61,38 +63,32 @@ def build_config(config_template, config_file, data_dir, files_step2, par_file, 
 @mpi(binary=tsunamiHySEA_bin, args="{{file_in}}", runner="mpirun", processes=gpus_per_exec, processes_per_node=gpus_per_node,working_dir="{{wdir}}")
 @task(file_in=FILE_IN,returns=1)
 def mpi_func(file_in, wdir):
-
     pass
 
-
+@constraint(computing_units=big_task_cu)
 @binary(binary=simulBS_bin, working_dir="{{wdir}}")
 @task(grid=FILE_IN, pois_ts_file=FILE_IN, sim_template_file=FILE_IN, sim_files_step2=FILE_OUT)
 def build_structure(seistype, grid, hours, group, sim_files_step2, load_balancing, pois_ts_file, sim_template_file, sim_events_files, wdir):
-
     pass
 
-
 #@task(log_file_sim=FILE_OUT)
+@constraint(computing_units=small_task_cu)
 @task(depth_file=FILE_IN, returns=1)
 def extract_ts(out_ts,depth_file,ptf_file,simwdir,centinel):
-
     step2_extract_ts(out_ts,depth_file,ptf_file,simwdir)
 
 
-#@task(log_file=FILE_OUT)
+@constraint(computing_units=big_task_cu)
 @task(returns=1)
 def create_ptf_input(ptf_files,out_path,depth_file,log_file):
-
     step2_create_ptf_input(ptf_files,out_path,depth_file,log_file)
 
-
+@constraint(computing_units=small_task_cu)
 @task(ptf_files=COMMUTATIVE, config_file=FILE_IN, depth_file=FILE_IN)
 def append_and_evaluate(ptf_files, ptf_file, args, config_file, sim_files_step1, out_step2_path, out_update_path, out_final, depth_file, log_file, sim_pois_ts, num_sims, kag, tsu, result_ext, conv_file, fig_path):
-
     args.cfg = config_file
     ptf_files.append(ptf_file)
     if (num_sims != 0) and (len(ptf_files) % num_sims == 0):
-        #step2_create_ptf_input(ptf_files, out_step2_path, depth_file, log_file)
         fail=step2_create_ptf_input(ptf_files, out_step2_path, depth_file, log_file)
         if kag>0:
             run_step_kagan(args,sim_files_step1,out_update_path)
@@ -112,7 +108,6 @@ def compress(folder, outfile, ptf_files):
 
 
 def build_steps_dirs(exec_dir, seistype):
-
      files_step1 = exec_dir + "/ptf_local_step1/"
      os.makedirs(files_step1)
      files_step2 = exec_dir + "/ptf_local_step2/"
@@ -130,10 +125,8 @@ def build_steps_dirs(exec_dir, seistype):
 
 ####################### MAIN SCRIPT ############################
 
-if __name__ == '__main__':
-    
+def main():    
      # reading arguments 
-     
      args = parse_ptf_stdin() 
      exec_dir = args.run_path
      data_dir = args.data_path
@@ -145,11 +138,8 @@ if __name__ == '__main__':
      else:  
          hours = args.hours                # the arg hours is missing in the run_bsc_mod.sh
          group_sims = int(args.group_sims)      # same
-         print("Kagan: " + args.kagan_weight)
-         print("Mare: " + args.mare_weight) 
          kag = int(args.kagan_weight)
          tsu = int(args.mare_weight)
-         #cfg_file = args.cfg
          seistype = args.seistype
          event_id = args.event
          args.event = data_dir + "/earlyEst/" + event_id + "_stat.json"
@@ -184,17 +174,13 @@ if __name__ == '__main__':
              for line in f:
                 # load balancing
                 line=exec_dir+'/'+line.strip()
-                print("Submitting execution for " +  line )
                 result=mpi_func(line,exec_dir)
                 
                 with open(line) as fsim:
-                     print('Entering fsim :', line)
                      for simline in fsim:
                          sims = sims + 1
                          simline = simline.strip()
-                         print('Entering simline :', simline)
                          simwdir = os.path.dirname(simline)
-                         print('sim dir',simwdir)
                          out_ts = exec_dir +"/"+simwdir+"/out_ts.nc"
                          ptf_file = exec_dir +"/"+simwdir+"/out_ts_ptf.nc"
                          ts_result = extract_ts(out_ts,depth_file,ptf_file,simwdir,result)
@@ -206,4 +192,5 @@ if __name__ == '__main__':
               append_and_evaluate(ptf_files, ptf_file, args, config_file, files_step1, files_step2, intermediate_files, files_step3, depth_file, log_file, sim_pois_ts, 1, kag, tsu, ts_result, conv_file, fig_path)
          compress(files_step3, exec_dir+"/results_" + event_id + "_" + seistype + ".tar.gz", ptf_files)
     
-
+if __name__ == '__main__':
+    main()

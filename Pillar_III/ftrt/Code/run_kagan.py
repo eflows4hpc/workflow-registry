@@ -23,7 +23,6 @@ from ptf_load_event          import load_event_parameters
 from ptf_load_event          import print_event_parameters
 from ptf_parser              import parse_ptf_stdin
 from ptf_parser              import update_cfg
-from ptf_figures             import make_ptf_figures
 from ptf_save                import save_ptf_dictionaries
 from ptf_save                import save_ptf_dictionaries
 from ptf_save                import save_ptf_as_txt
