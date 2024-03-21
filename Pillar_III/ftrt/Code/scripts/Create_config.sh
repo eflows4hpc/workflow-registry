@@ -8,6 +8,7 @@ par_file=$5
 val_kagan=$6
 val_mare=$7
 val_event=$8
+val_user_pois=$9
 
 echo "config_temp: $config_temp"
 echo "config_file: $config_file"
@@ -17,8 +18,10 @@ echo "par_file: $par_file"
 echo "val_kagan: $val_kagan"
 echo "val_mare: $val_mare"
 echo "val_event: $val_event"
+echo "val_user_pois: $val_user_poi"
 
 # Retreiving values from the parfile
+
 val_OR_EM=$(awk '/^val_OR_EM/{print $NF}' $par_file)
 val_OR_HC=$(awk '/^val_OR_HC/{print $NF}' $par_file)
 val_MC_type=$(awk '/^val_MC_type/{print $NF}' $par_file)
@@ -31,6 +34,7 @@ val_RS_samp_run=$(awk '/^val_RS_samp_run/{print $NF}' $par_file)
 #val_mare=$(awk '/^val_mare/{print $NF}' $par_file)
 val_fm=$(awk '/^val_fm/{print $NF}' $par_file)
 val_nsigma=$(awk '/^val_nsigma/{print $NF}' $par_file)
+val_percentiles=$(awk '/^val_percentiles/{print $NF}' $par_file)
 
 # # Passing values to the cfg file
 # 
@@ -54,8 +58,10 @@ sed -i "s/val_kagan/$val_kagan/" $config_file
 sed -i "s/val_mare/$val_mare/" $config_file
 sed -i "s/val_fm/$val_fm/" $config_file
 sed -i "s/val_nSigma/$val_nsigma/" $config_file
+sed -i "s/val_percentiles/$val_percentiles/" $config_file
 sed -i "s#datapath#$data_path#" $config_file
 sed -i "s#step2path#$step2_path#" $config_file
+sed -i "s#val_user_pois#$val_user_pois#" $config_file
 
 echo "Config ended"
 

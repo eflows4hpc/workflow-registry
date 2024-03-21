@@ -1,8 +1,10 @@
 import os
+import sys
 import numpy as np
 import configparser
 import re
 from datetime import datetime
+import matplotlib.pyplot as plt
 
 from ptf_preload               import ptf_preload
 from ptf_preload               import load_Scenarios_Reg
@@ -16,6 +18,7 @@ from ptf_preload_curves        import load_hazard_values
 from ptf_save                  import save_ptf_dictionaries
 from ptf_save                  import load_ptf_out
 from ptf_save                  import save_ptf_out_int
+from ptf_figures               import make_figures 
 
 def step3_hazard(**kwargs):
 
@@ -97,11 +100,11 @@ def step3_hazard(**kwargs):
     if RS_samp_scen>0:
        rangenid=len(ptf_out['new_ensemble_RS'])
        for Nid in range(rangenid):
-           if len(ptf_out['new_ensemble_RS'][Nid]['RealProbScenBS'])<RS_samp_scen:
-              probability_scenarios = ptf_out['new_ensemble_RS'][Nid]
-           else:
+           if len(list_tmp_scen)<len(ptf_out['new_ensemble_RS'][Nid]['RealProbScenBS']):
               ProbScenBS_temp=ptf_out['new_ensemble_RS'][Nid]['RealProbScenBS'][list_tmp_scen]
               ptf_out['new_ensemble_RS'][Nid]['RealProbScenBS']=ProbScenBS_temp/np.sum(ProbScenBS_temp)
+              probability_scenarios = ptf_out['new_ensemble_RS'][Nid]
+           else:
               probability_scenarios = ptf_out['new_ensemble_RS'][Nid]
 
            print('Compute hazard curves at POIs')
@@ -126,12 +129,14 @@ def step3_hazard(**kwargs):
 
            ptf_out['hazard_curves_RS_%d'%Nid]          = hazard_curves
 
+    ptf_out['list_ind_scen'] = list_tmp_scen
+
     return ptf_out
 
 #                                  BEGIN                                                       #
 ################################################################################################
 
-def run_step3_init(args,sim_files_step1,sim_files_step3,sim_pois,ptf_files):
+def run_step3_init(args,sim_files_step1,sim_files_step3,sim_pois,ptf_files,fail,conv_file,fig_path):
 
     ############################################################
     # Read Stdin
@@ -163,16 +168,48 @@ def run_step3_init(args,sim_files_step1,sim_files_step3,sim_pois,ptf_files):
     
     print_event_parameters(dict=event_parameters, args = args)
 
-    list_tmp_scen=np.zeros(len(ptf_files))
-    for j in range(len(ptf_files)):
-        line_tmp = ptf_files[j]
+
+    ### Identification of the failed simulations ###
+    ### Creation of two lists of scenarios : 
+    # 1) a no_fail one for calulating the HC without introducing the errors from the failed one
+    no_fail = np.where(fail == 0)[0]
+    ptf_no_fail = [ptf_files[i] for i in no_fail]
+    list_tmp_scen=np.zeros(len(no_fail))
+    for j in range(len(no_fail)):
+        line_tmp = ptf_no_fail[j]
         line = re.findall('(\d+|[A-Za-z]+)', str(line_tmp[-24:-14]))
         list_tmp_scen[j] = int(line[1])-1
         list_tmp_scen = list_tmp_scen.astype(int)
 
+    # 2) a yes_fail one for saving the scenarios id and writing a warning file
+    yes_fail = np.where(fail == 3)[0]
+    if len(yes_fail)>0:
+       if len(yes_fail)==1:
+          ptf_fail = ptf_files[int(yes_fail)]
+          line_tmp = ptf_fail
+          line = re.findall('(\d+|[A-Za-z]+)', str(line_tmp[-24:-14]))
+          list_tmp_fail = int(line[1])-1
+       elif len(yes_fail)>1:
+          ptf_fail = [ptf_files[i] for i in yes_fail]
+          list_tmp_fail=np.zeros(len(yes_fail))
+          for j in range(len(yes_fail)):
+              line_tmp = ptf_fail[j]
+              line = re.findall('(\d+|[A-Za-z]+)', str(line_tmp[-24:-14]))
+              list_tmp_fail[j] = int(line[1])-1
+              list_tmp_fail = list_tmp_fail.astype(int)
+       myfile = open(sim_files_step3+'/'+str(len(fail))+"_"+str(len(yes_fail))+"_failed_scenarios",'w')
+       for Nscen in list_tmp_fail:
+           myfile.write("%d\n"%(Nscen))
+       myfile.close()
+    else:
+       myfile = open(sim_files_step3+'/'+str(len(fail))+"_no_failed_scenario",'w')
+       myfile.write("No fails")
+       myfile.close()
+
+
     ### Load STEP1 and STEP2 files ###
     ptf_out          = load_ptf_out(cfg=Config, args=args, event_parameters=event_parameters, sim_files=sim_files_step1)  #status= status,)
-    h_curve_files    = load_hazard_values(cfg=Config, args=args, in_memory=True, ptf_out=ptf_out,step2_mod=step2_mod,POIs=POIs, sim_pois=sim_pois)
+    h_curve_files    = load_hazard_values(cfg=Config, args=args, in_memory=True, ptf_out=ptf_out, step2_mod=step2_mod,POIs=POIs, sim_pois=sim_pois, list_tmp_scen=no_fail)
  
     ptf_out = step3_hazard(Config                   = Config,
                            args                     = args,
@@ -184,9 +221,42 @@ def run_step3_init(args,sim_files_step1,sim_files_step3,sim_pois,ptf_files):
                            h_curve_files            = h_curve_files,
                            list_tmp_scen            = list_tmp_scen,
     		           ptf_out                  = ptf_out)
-    
-    
-    len_tmp_scen = len(ptf_files) 
+
+
+    ### Updating the convergence file with the HC metrics of the new set of scenarios ###    
+    Nid=0
+    hazard_curves=ptf_out['hazard_curves_RS_%d'%Nid]
+    mean_hc = np.mean(hazard_curves['hazard_curves_at_pois_mean'])
+    std_hc = np.std(hazard_curves['hazard_curves_at_pois_mean'])
+    myfile = open(conv_file,'a')
+    myfile.write("%d %f %f\n"%(len(fail),mean_hc,std_hc))
+    myfile.close()
+   
+    simplt=np.array([])
+    meanplt=np.array([])
+    stdplt=np.array([])
+    with open(conv_file) as f:
+         #lines = f.readlines()
+         for (i,line) in enumerate(f):
+             iline=np.array(line.split())
+             simplt = np.append(simplt,int(iline[0]))
+             meanplt = np.append(meanplt,float(iline[1]))
+             stdplt = np.append(stdplt,float(iline[2]))
+
+    fig, axs = plt.subplots(1,2)
+    fig.suptitle('RS convergence')
+    leg=['mean','stdv']
+    fig.subplots_adjust(hspace=0.3)
+    axs[0].plot(simplt,meanplt,color = 'C0',label='%s'%leg[0])
+    axs[0].legend()
+    axs[0].set_title("Convergence of the mean HC value", fontsize=10)
+    axs[1].plot(simplt,stdplt,color = 'C1',label='%s'%leg[1])
+    axs[1].legend()
+    axs[1].set_title("Convergence of the std HC value", fontsize=10)
+    plt.savefig(sim_files_step3+'Conv_%d_scenarios.png'%(len(fail)),bbox_inches='tight',dpi=300)
+
+        
+    len_tmp_scen = len(ptf_no_fail) 
     ######################################################
     # Save outputs
     print("Save pyPTF output")
@@ -197,21 +267,23 @@ def run_step3_init(args,sim_files_step1,sim_files_step3,sim_pois,ptf_files):
                                    list_tmp_scen      = len_tmp_scen,
                                    sim_files          = sim_files_step3)
 
-    saved_files = save_ptf_dictionaries(cfg                = Config,
-                                            args               = args,
-                                            event_parameters   = event_parameters,
-                                            ptf                = ptf_out,
-                                            list_tmp_scen      = len_tmp_scen,
-                                            sim_files          = sim_files_step3)
+    file_hc = save_ptf_dictionaries(cfg                = Config,
+                                    args               = args,
+                                    event_parameters   = event_parameters,
+                                    ptf                = ptf_out,
+                                    list_tmp_scen      = len_tmp_scen,
+                                    sim_files          = sim_files_step3)
     
-    ######################################################
     ## Make figures from dictionaries
-    #print("Make pyPTF figures")
-    #saved_files = make_ptf_figures(cfg                = Config,
-    #                                   args               = args,
-    #                                   event_parameters   = event_parameters,
-    #                                   ptf                = ptf_out,
-    #                                   saved_files        = saved_files)
+    print("Make pyPTF figures")
+    saved_files = make_figures(cfg                = Config,
+                                       args               = args,
+                                       event_parameters   = event_parameters,
+                                       ptf                = ptf_out,
+                                       file_hc            = file_hc,
+                                       fig_path           = fig_path,
+                                       fail               = fail)
+
     #
     #print("Save some extra usefull txt values")
     #saved_files = save_ptf_as_txt(cfg                = Config,
