@@ -3,4 +3,4 @@ old_PYTHONPATH=$PYTHONPATH
 export PYTHONPATH=$PYTHONPATH:$old_PYTHONPATH
 export COMPSS_HOME=/opt/view/compss
 export LD_LIBRARY_PATH=$COMPSS_HOME/Bindings/bindings-common/lib/:$LD_LIBRARY_PATH
-export PERMEDCOE_IMAGES=/apps/COMPSs/PerMedCoE/resources/BuildingBlocks/Resources/images/
+export PERMEDCOE_IMAGES=$(pwd)
