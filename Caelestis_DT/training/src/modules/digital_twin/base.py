@@ -5,12 +5,31 @@ from dislib.data.array import Array
 import numpy as np
 import dislib as ds
 import math
-import time
 
 from modules.training.model_selection.base import ModelSelection
 
 
 class DigitalTwin:
+    """
+    Digital Twin object
+    Object in charge of receiving the different workflow parts and executing them
+
+    Parameters
+    ----------
+    Simulator: Simulation
+        Object Simulation that will execute the simulation workflow or the call to the simulator
+    GeneratorParametersSimulation:
+        Object that will sample and parse the parameters for the simulations
+    DataManager
+        Object used to write and read data
+    Training
+        Object that will perform the Model selection phase and/or the training and validation.
+    DataPreprocessing
+        Object in charge of performing data analytics operations and the preprocessing
+    Attributes
+    ----------
+
+    """
     def __init__(self, simulator=None, data_preprocessing=None, generator_parameters_simulation=None, data_manager=None, training=None, block_size=None):
         self.simulator = simulator
         self.generator_parameters_simulation = generator_parameters_simulation
@@ -25,28 +44,51 @@ class DigitalTwin:
         self.block_size = block_size
 
     def set_training(self, training):
+        """
+        Sets the object used for the training
+        """
         self.training = training
 
     def set_simulator(self, simulator):
+        """
+        Sets the Simulation component
+        """
         self.simulator = simulator
 
     def set_generator_parameters_simulation(self, generator_parameters_simulation=None):
+        """
+        Specifies the GeneratorParametersSimulation component
+        """
         if isinstance(generator_parameters_simulation, GeneratorParametersSimulation):
             self.generator_parameters_simulation = generator_parameters_simulation
         else:
             raise ValueError("Wrong generator parameters simulation type")
 
     def set_block_size(self, block_size):
+        """
+        Sets the block size used to generate the ds-arrays
+        """
         self.block_size = block_size
 
     def set_x_data(self, x_data):
+        """
+        Enables the specification of the X training data, can be used in the execution of the simulations
+        """
         self.x_data = x_data
 
     def set_data(self, x_data, y_data):
+        """
+        Enables the specification of the training data
+        """
         self.x_data = x_data
         self.y_data = y_data
 
     def save_data_generated(self, path):
+        """
+        Will save the data generated in the GenerateParametersSimulation and Simulation objects
+        path: String
+            Route where the data will be stored
+        """
         self.path = path
         if self.x_data is not None:
             self.data_manager.set_data(self.x_data)
@@ -54,9 +96,18 @@ class DigitalTwin:
             self.data_manager.set_data(self.y_data)
 
     def visualize_results_training(self):
+        """
+        Function that prints the results obtained by the usage the training object.
+        """
         self.training.visualize_results()
 
     def execute(self):
+        """
+        Function that executes the whole training workflow
+        returns:
+        best_model:
+            Most appropriate model according to the specified score
+        """
         configuration_data = self.data_manager.get_data()
         self._execute_generator_parameters_simulation(configuration_data)
         self._execute_simulation(self.arguments_simulation, self.data_parsed)

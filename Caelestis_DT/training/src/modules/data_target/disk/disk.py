@@ -7,6 +7,21 @@ from dislib.data.array import Array
 
 
 class Disk(DataTarget):
+    """
+    Object that manages the writings and readings to a disk
+
+    This class should be instantiated directly and passed as argument to a data_manager
+    or other objects.
+
+    Parameters
+    ----------
+    route : string
+        Path where the read and write files are
+    read_file : string
+        Name of the file to read data from
+    write_file : string
+        Name of the file to write data into
+    """
 
     def __init__(self, route, read_file=None, write_file=None):
         if os.path.isfile(route):
@@ -29,8 +44,8 @@ class Disk(DataTarget):
 
     def get_data(self):
         """
-
-        :return:
+        Reads data from the specified file and path
+        :return: data
         """
         if self.read_file is None:
             raise ValueError("There is no specified file to read data from.")
@@ -49,6 +64,10 @@ class Disk(DataTarget):
         return data
 
     def set_data(self, data):
+        """
+        Writes data in the specified data for writing
+        data: data to write
+        """
         if data is None:
             raise ValueError("Data to write should not be none.")
         if self.write_file is None:
@@ -71,14 +90,26 @@ class Disk(DataTarget):
             f.close()
 
     def read(self, source):
+        """
+        Set file to read data from, and reads the data
+        source: string, name of the file to read the data from.
+        returns: data
+        """
         self.set_file_to_read(source)
         return self.get_data()
 
     def write(self, source, data):
+        """
+         Sets file to write data int and writes the data
+         source: string, name of the file to write the data into.
+         """
         self.set_file_to_write(source)
         self.set_data(data)
 
     def clear_data(self):
+        """
+        Deletes the data from the file to write
+        """
         if self.write_file is None:
             raise ValueError("There is no specified file for writing data.")
         file_format = np.char.rpartition(self.write_file, '.')
@@ -94,6 +125,10 @@ class Disk(DataTarget):
             f.close()
 
     def set_file_to_read(self, read_file):
+        """
+        Sets file to read data from
+        write_file: string, name of the file to read the data from.
+        """
         res = np.char.rpartition(read_file, '/')
         if os.path.isfile(self.route + "/" + res[-1]):
             self.read_file = read_file
@@ -106,6 +141,10 @@ class Disk(DataTarget):
                              "specified route")
 
     def set_file_to_write(self, write_file):
+        """
+        Sets file to write data into
+        write_file: string, name of the file to write the data into.
+        """
         if os.path.isfile(write_file):
             res = np.char.rpartition(write_file, '/')
             self.route = res[0]

@@ -7,6 +7,9 @@ def distribute_tasks(simulation_workflow, parameters, execution_number, **simula
     return simulation_workflow(parameters, execution_number, **simulation_parameters)
 
 class Simulation:
+    """
+    Object in charge of executing the simulation workflow or to distribute the different calls to the simulator core
+    """
     def __init__(self, simulator_core):
         if simulator_core is not None and callable(simulator_core):
             self.simulator_core = simulator_core
@@ -20,8 +23,9 @@ class Simulation:
 
     def set_simulator_core(self, simulator_core):
         """
-
-        :param simulator_core:
+        Sets the simulator to use to generate the training data.
+        :param simulator_core: function that implements the workflow of the simulation
+        or the call to the simulation.
         :return:
         """
         if simulator_core is not None and callable(simulator_core):
@@ -33,8 +37,8 @@ class Simulation:
 
     def set_parameters(self, parameters):
         """
-
-        :param parameters:
+        Set the parameters that will be used in the different simulations
+        :param parameters: dict or list, containing sets of parameters
         :return:
         """
         if isinstance(parameters, dict):
@@ -47,17 +51,19 @@ class Simulation:
 
     def is_workflow(self, is_workflow=True):
         """
-
-        :param is_workflow:
+        Specify if the simulator core is a workflow or
+        just a call to the simulator engine
+        :param is_workflow: boolean
         :return:
         """
         self.is_workflow = is_workflow
 
     def execute(self, parameters, clear_previous_data=True):
         """
-
-        :param parameters:
-        :param clear_previous_data:
+        Executes the workflow of the call to the simulator engine
+        :param parameters: list containing the parameters for each simulation
+        :param clear_previous_data: boolean,
+        specify to clean the data already generated or accumulate it
         :return:
         """
         if self.simulation_generated_data is None or clear_previous_data:
@@ -79,4 +85,7 @@ class Simulation:
         return self.simulation_generated_data
 
     def get_simulation_data(self):
+        """
+        Returns the data generated in the execution of the simulation
+        """
         return self.simulation_generated_data
