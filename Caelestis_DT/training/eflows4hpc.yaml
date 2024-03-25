@@ -1,0 +1,18 @@
+apt:
+        - grace
+        - graphviz
+        - python3-yaml
+        - python3-pip
+        - libbz2-dev
+spack:
+        specs:
+                - compss@3.3
+                - py-dislib@master
+                - alya@master
+                - py-pydoe
+                - py-pandas
+pip:
+        - pillow
+        - rocrate
+        - pickle5
+        - contextvars
