@@ -1,3 +1,5 @@
 spack:
         specs:
                 - exageostat@master
+                - intel-mkl@2020.4
+                - nlopt python=False
