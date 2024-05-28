@@ -1,0 +1,4 @@
+spack:
+        specs:
+                - exageostat@master+cuda
+                - nlopt python=False
