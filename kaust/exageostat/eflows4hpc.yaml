@@ -1,4 +1,11 @@
+apt:
+        - gcc-8
+        - g++-8
+        - gfortran-8
 spack:
+        packages:
+                all:
+                        compiler: [ gcc@8 ]
         specs:
                 - exageostat@master
                 - openblas 
