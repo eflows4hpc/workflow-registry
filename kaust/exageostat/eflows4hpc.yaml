@@ -1,5 +1,5 @@
 spack:
         specs:
                 - exageostat@master
-                - intel-mkl@2020.4
+                - openblas 
                 - nlopt python=False
