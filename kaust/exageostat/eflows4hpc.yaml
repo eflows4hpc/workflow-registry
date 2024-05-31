@@ -8,5 +8,5 @@ spack:
                         compiler: [ gcc@8 ]
         specs:
                 - exageostat@master
-                - openblas dynamic_dispatch=False 
+                - openblas 
                 - nlopt python=False
