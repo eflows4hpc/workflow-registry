@@ -11,7 +11,7 @@ spack:
         specs:
                 - t-hysea
                 - t-hysea-lb
-                - compss@eflows4hpc
+                - compss@3.3
                 - py-numpy
                 - py-scipy
                 - py-h5py
@@ -19,8 +19,6 @@ spack:
                 - py-netcdf4
                  
 pip:
-       - xarray==0.16.1
-       - utm==0.7.0
        - xarray==0.16.1
        - utm==0.7.0
        - ismember==1.0.2
@@ -32,6 +30,7 @@ pip:
        - matplotlib==3.4.3
        - reverse_geocoder==1.5.1
        - tornado==6.1
+       - basemap
        - cython
        - shapely
        - dill
