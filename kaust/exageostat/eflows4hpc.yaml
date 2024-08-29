@@ -1,5 +1,12 @@
+apt:
+        - gcc-8
+        - g++-8
+        - gfortran-8
 spack:
+        packages:
+                all:
+                        compiler: [ gcc@8 ]
         specs:
                 - exageostat@master
-                - intel-mkl@2020.4
+                - openblas 
                 - nlopt python=False

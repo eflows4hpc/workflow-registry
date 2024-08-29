@@ -1,0 +1,16 @@
+apt:
+        - graphviz
+        - libbz2-dev
+spack:
+        specs:
+                - compss@3.3.2
+                - py-dislib@master
+                - alya@master
+pip:
+        - pyyaml
+        - pydoe
+        - pandas
+        - pillow
+        - rocrate
+        - pickle5
+        - contextvars

@@ -1,0 +1,5 @@
+spack:
+        specs:
+                - exageostat@master+cuda
+                - intel-mkl@2018.0
+                - nlopt python=False
